@@ -101,7 +101,16 @@ export default function Footer() {
         {/* Bottom Disclaimer */}
         <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] text-slate-500 text-center sm:text-left">
           <p>© {new Date().getFullYear()} Champion Store IDN. Hak cipta dilindungi.</p>
-          <p>Champion Store beroperasi secara independen dan aman 100%.</p>
+          <div className="flex items-center gap-4">
+            <a
+              href="/admin"
+              className="text-slate-400 hover:text-red-400 font-bold transition-colors flex items-center gap-1"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+              <span>Admin Panel</span>
+            </a>
+            <p>Champion Store beroperasi secara independen dan aman 100%.</p>
+          </div>
         </div>
       </div>
     </footer>
