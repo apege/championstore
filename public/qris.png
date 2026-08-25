@@ -1,0 +1,122 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300" width="300" height="300">
+  <rect width="300" height="300" rx="24" fill="#FFFFFF"/>
+  <!-- QR Header -->
+  <text x="150" y="32" font-family="Arial, sans-serif" font-size="13" font-weight="900" text-anchor="middle" fill="#0F172A" letter-spacing="1">QRIS RESMI TOKO</text>
+  <text x="150" y="47" font-family="Arial, sans-serif" font-size="9" font-weight="700" text-anchor="middle" fill="#DC2626">CHAMPIONSTORE_IDN</text>
+
+  <!-- Outer Markers Top-Left -->
+  <rect x="30" y="60" width="55" height="55" rx="8" fill="#0F172A"/>
+  <rect x="38" y="68" width="39" height="39" rx="4" fill="#FFFFFF"/>
+  <rect x="46" y="76" width="23" height="23" rx="3" fill="#DC2626"/>
+
+  <!-- Outer Markers Top-Right -->
+  <rect x="215" y="60" width="55" height="55" rx="8" fill="#0F172A"/>
+  <rect x="223" y="68" width="39" height="39" rx="4" fill="#FFFFFF"/>
+  <rect x="231" y="76" width="23" height="23" rx="3" fill="#DC2626"/>
+
+  <!-- Outer Markers Bottom-Left -->
+  <rect x="30" y="195" width="55" height="55" rx="8" fill="#0F172A"/>
+  <rect x="38" y="203" width="39" height="39" rx="4" fill="#FFFFFF"/>
+  <rect x="46" y="211" width="23" height="23" rx="3" fill="#DC2626"/>
+
+  <!-- Simulated QR Pattern Matrix -->
+  <g fill="#0F172A">
+    <rect x="95" y="60" width="8" height="8"/>
+    <rect x="110" y="60" width="16" height="8"/>
+    <rect x="135" y="60" width="8" height="8"/>
+    <rect x="150" y="60" width="24" height="8"/>
+    <rect x="185" y="60" width="8" height="8"/>
+    <rect x="200" y="60" width="8" height="8"/>
+
+    <rect x="95" y="75" width="24" height="8"/>
+    <rect x="130" y="75" width="8" height="8"/>
+    <rect x="145" y="75" width="16" height="8"/>
+    <rect x="175" y="75" width="16" height="8"/>
+    <rect x="200" y="75" width="8" height="8"/>
+
+    <rect x="95" y="90" width="8" height="8"/>
+    <rect x="110" y="90" width="8" height="8"/>
+    <rect x="130" y="90" width="24" height="8"/>
+    <rect x="165" y="90" width="8" height="8"/>
+    <rect x="180" y="90" width="24" height="8"/>
+
+    <rect x="95" y="105" width="16" height="8"/>
+    <rect x="120" y="105" width="8" height="8"/>
+    <rect x="140" y="105" width="16" height="8"/>
+    <rect x="165" y="105" width="8" height="8"/>
+    <rect x="185" y="105" width="16" height="8"/>
+
+    <!-- Middle Strip -->
+    <rect x="30" y="125" width="8" height="8"/>
+    <rect x="45" y="125" width="16" height="8"/>
+    <rect x="70" y="125" width="8" height="8"/>
+    <rect x="85" y="125" width="24" height="8"/>
+    <rect x="195" y="125" width="16" height="8"/>
+    <rect x="220" y="125" width="8" height="8"/>
+    <rect x="240" y="125" width="24" height="8"/>
+
+    <rect x="30" y="140" width="24" height="8"/>
+    <rect x="65" y="140" width="8" height="8"/>
+    <rect x="80" y="140" width="16" height="8"/>
+    <rect x="205" y="140" width="8" height="8"/>
+    <rect x="225" y="140" width="24" height="8"/>
+    <rect x="255" y="140" width="16" height="8"/>
+
+    <rect x="30" y="155" width="8" height="8"/>
+    <rect x="50" y="155" width="16" height="8"/>
+    <rect x="75" y="155" width="24" height="8"/>
+    <rect x="195" y="155" width="16" height="8"/>
+    <rect x="220" y="155" width="16" height="8"/>
+    <rect x="245" y="155" width="24" height="8"/>
+
+    <rect x="30" y="170" width="16" height="8"/>
+    <rect x="55" y="170" width="8" height="8"/>
+    <rect x="70" y="170" width="16" height="8"/>
+    <rect x="95" y="170" width="8" height="8"/>
+    <rect x="195" y="170" width="8" height="8"/>
+    <rect x="210" y="170" width="24" height="8"/>
+    <rect x="245" y="170" width="16" height="8"/>
+
+    <!-- Bottom Right Area -->
+    <rect x="95" y="195" width="24" height="8"/>
+    <rect x="130" y="195" width="16" height="8"/>
+    <rect x="155" y="195" width="8" height="8"/>
+    <rect x="175" y="195" width="24" height="8"/>
+    <rect x="210" y="195" width="16" height="8"/>
+    <rect x="235" y="195" width="8" height="8"/>
+    <rect x="250" y="195" width="20" height="8"/>
+
+    <rect x="95" y="210" width="8" height="8"/>
+    <rect x="110" y="210" width="16" height="8"/>
+    <rect x="135" y="210" width="24" height="8"/>
+    <rect x="170" y="210" width="8" height="8"/>
+    <rect x="190" y="210" width="16" height="8"/>
+    <rect x="215" y="210" width="24" height="8"/>
+    <rect x="245" y="210" width="16" height="8"/>
+
+    <rect x="95" y="225" width="16" height="8"/>
+    <rect x="120" y="225" width="8" height="8"/>
+    <rect x="140" y="225" width="16" height="8"/>
+    <rect x="165" y="225" width="24" height="8"/>
+    <rect x="200" y="225" width="8" height="8"/>
+    <rect x="220" y="225" width="16" height="8"/>
+    <rect x="245" y="225" width="24" height="8"/>
+
+    <rect x="95" y="240" width="24" height="8"/>
+    <rect x="130" y="240" width="8" height="8"/>
+    <rect x="150" y="240" width="16" height="8"/>
+    <rect x="175" y="240" width="16" height="8"/>
+    <rect x="205" y="240" width="24" height="8"/>
+    <rect x="240" y="240" width="8" height="8"/>
+    <rect x="255" y="240" width="15" height="8"/>
+  </g>
+
+  <!-- Center Logo Badge -->
+  <rect x="115" y="115" width="70" height="70" rx="14" fill="#0F172A" stroke="#DC2626" stroke-width="3"/>
+  <circle cx="150" cy="150" r="24" fill="#DC2626"/>
+  <text x="150" y="156" font-family="Arial, sans-serif" font-size="16" font-weight="900" text-anchor="middle" fill="#FFFFFF">CS</text>
+
+  <!-- Footer Brands -->
+  <rect x="20" y="265" width="260" height="24" rx="6" fill="#F1F5F9"/>
+  <text x="150" y="281" font-family="Arial, sans-serif" font-size="9" font-weight="700" text-anchor="middle" fill="#475569">BCA • MANDIRI • BRI • DANA • GOPAY • OVO • SHOPEEPAY</text>
+</svg>
