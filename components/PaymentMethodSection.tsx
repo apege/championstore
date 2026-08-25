@@ -15,7 +15,7 @@ export default function PaymentMethodSection({
 }: PaymentMethodSectionProps) {
   return (
     <section id="section-payment" className="w-full mb-8">
-      <div className="bg-slate-900/80 backdrop-blur-md rounded-3xl border border-slate-800/80 shadow-xl p-4 sm:p-7 md:p-8">
+      <div className="bg-slate-900/95 rounded-3xl border border-slate-800/80 shadow-xl p-4 sm:p-7 md:p-8">
         {/* Section Header */}
         <div className="flex items-start gap-3.5 mb-6">
           <div className="w-8 h-8 rounded-full bg-gradient-to-r from-red-600 to-rose-600 text-white font-black text-sm flex items-center justify-center shadow-md shadow-red-600/30 shrink-0">

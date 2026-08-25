@@ -85,7 +85,7 @@ export const ROBUX_PACKAGES: RobuxItem[] = [
     amount: 30500,
     price: 500000,
     isSultan: true,
-    badge: "SUPER SULTAN",
+    badge: "SULTAN",
     category: "sultan",
   },
 ];

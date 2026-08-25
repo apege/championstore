@@ -43,7 +43,7 @@ export default function FeaturesBar() {
   return (
     <section id="section-features" className="w-full mb-8">
       {/* 1. DESKTOP VIEW: Static 5-Column Grid (Diam / Tidak Gerak) */}
-      <div className="hidden md:grid md:grid-cols-5 gap-3 bg-slate-900/70 backdrop-blur-md border border-slate-800/80 rounded-2xl p-4 shadow-lg">
+      <div className="hidden md:grid md:grid-cols-5 gap-3 bg-slate-900/95 border border-slate-800/80 rounded-2xl p-4 shadow-lg">
         {features.map((feat, index) => {
           const Icon = feat.icon;
           return (
@@ -70,10 +70,10 @@ export default function FeaturesBar() {
       </div>
 
       {/* 2. MOBILE VIEW ONLY: Running Marquee Auto-Scroll (Hanya Gerak di Layar HP) */}
-      <div className="block md:hidden relative overflow-hidden bg-slate-900/70 backdrop-blur-md border border-slate-800/80 rounded-2xl py-3 shadow-lg">
+      <div className="block md:hidden relative overflow-hidden bg-slate-900/95 border border-slate-800/80 rounded-2xl py-3 shadow-lg">
         {/* Left and Right Fade Masks */}
-        <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-slate-900 via-slate-900/80 to-transparent z-10 pointer-events-none" />
-        <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-slate-900 via-slate-900/80 to-transparent z-10 pointer-events-none" />
+        <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-slate-900 to-transparent z-10 pointer-events-none" />
+        <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-slate-900 to-transparent z-10 pointer-events-none" />
 
         {/* Marquee Track */}
         <div className="animate-marquee gap-3.5 items-center px-3">

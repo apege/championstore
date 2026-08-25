@@ -23,11 +23,13 @@ interface RobloxAccountData {
 interface AccountInputSectionProps {
   username: string;
   onUsernameChange: (val: string) => void;
+  onUserIdChange?: (id: number | null) => void;
 }
 
 export default function AccountInputSection({
   username,
   onUsernameChange,
+  onUserIdChange,
 }: AccountInputSectionProps) {
   const [checking, setChecking] = useState(false);
   const [robloxData, setRobloxData] = useState<RobloxAccountData | null>(null);
@@ -50,13 +52,16 @@ export default function AccountInputSection({
         setRobloxData(data.user);
         // Automatically sync with exact username casing from Roblox
         onUsernameChange(data.user.name);
+        onUserIdChange?.(data.user.id);
       } else {
         setErrorMsg(
           data.message || "Akun Roblox tidak ditemukan. Periksa kembali username Anda."
         );
+        onUserIdChange?.(null);
       }
     } catch {
       setErrorMsg("Gagal memeriksa akun Roblox. Silakan coba beberapa saat lagi.");
+      onUserIdChange?.(null);
     } finally {
       setChecking(false);
     }
@@ -64,7 +69,7 @@ export default function AccountInputSection({
 
   return (
     <section id="section-account" className="w-full mb-8">
-      <div className="bg-slate-900/80 backdrop-blur-md rounded-3xl border border-slate-800/80 shadow-xl p-4 sm:p-7 md:p-8">
+      <div className="bg-slate-900/95 rounded-3xl border border-slate-800/80 shadow-xl p-4 sm:p-7 md:p-8">
         {/* Section Header */}
         <div className="flex items-start gap-3.5 mb-6">
           <div className="w-8 h-8 rounded-full bg-gradient-to-r from-red-600 to-rose-600 text-white font-black text-sm flex items-center justify-center shadow-md shadow-red-600/30 shrink-0">

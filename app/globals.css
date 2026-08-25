@@ -5,10 +5,18 @@
   color-scheme: dark;
 }
 
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
 body {
   font-family: var(--font-sans);
   background-color: #080c14;
   color: #f1f5f9;
+  overflow-x: hidden;
 }
 
 /* Dark mode custom scrollbar */
@@ -39,6 +47,7 @@ body {
   display: flex;
   width: max-content;
   animation: marquee 28s linear infinite;
+  will-change: transform;
 }
 
 .animate-marquee:hover {

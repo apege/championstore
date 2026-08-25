@@ -43,17 +43,27 @@ export default function CheckoutModal({
   const [copied, setCopied] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [invoiceNumber, setInvoiceNumber] = useState(
+    `CS-${Date.now().toString().slice(-8)}`
+  );
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
       setMounted(true);
       document.body.style.overflow = "hidden";
+      if (paymentMethod === "whatsapp") {
+        setIsSuccess(true);
+      }
     } else {
-      const timer = setTimeout(() => setMounted(false), 200);
+      const timer = setTimeout(() => {
+        setMounted(false);
+        setIsSuccess(false);
+      }, 200);
       document.body.style.overflow = "unset";
       return () => clearTimeout(timer);
     }
-  }, [isOpen]);
+  }, [isOpen, paymentMethod]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -82,8 +92,6 @@ export default function CheckoutModal({
     )
     .join(", ");
 
-  const invoiceNumber = `CS-${Date.now().toString().slice(-6)}`;
-
   const handleCopyInvoice = () => {
     navigator.clipboard.writeText(invoiceNumber);
     setCopied(true);
@@ -97,8 +105,10 @@ export default function CheckoutModal({
     }
   };
 
-  const handleSubmitWebsiteOrder = (e: React.FormEvent) => {
+  const handleSubmitWebsiteOrder = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage(null);
+
     if (!username.trim()) {
       alert("Harap masukkan Username Roblox terlebih dahulu!");
       return;
@@ -112,17 +122,74 @@ export default function CheckoutModal({
       return;
     }
 
-    setSubmitting(true);
-    setTimeout(() => {
-      setSubmitting(false);
+    try {
+      setSubmitting(true);
+
+      // 1. Upload proof file to Supabase Storage
+      let proofUrl = "";
+      try {
+        const formData = new FormData();
+        formData.append("file", proofFile);
+        const uploadRes = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        });
+        const uploadData = await uploadRes.json();
+        if (uploadData.success && uploadData.url) {
+          proofUrl = uploadData.url;
+        }
+      } catch (uploadErr) {
+        console.warn("Upload proof error:", uploadErr);
+      }
+
+      // 2. Submit order to Supabase API
+      const itemsPayload = cartItems.map((ci) => ({
+        id: ci.item.id,
+        amount: ci.item.amount,
+        price: ci.item.price,
+        quantity: ci.quantity,
+        name: `${ci.item.amount.toLocaleString("id-ID")} Robux`,
+      }));
+
+      const res = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: username.trim(),
+          phone: phoneNumber.trim(),
+          items: itemsPayload,
+          totalRobux,
+          totalPrice,
+          paymentMethod: "website",
+          paymentProofUrl: proofUrl || null,
+          customerNote: adminNote.trim() || null,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Gagal membuat pesanan.");
+      }
+
+      if (data.invoiceNumber) {
+        setInvoiceNumber(data.invoiceNumber);
+      }
+
       setIsSuccess(true);
-    }, 900);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Terjadi kesalahan saat memproses pesanan.";
+      setErrorMessage(msg);
+      alert(msg);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const generateWhatsAppUrl = () => {
+  const generateWhatsAppUrl = (inv: string = invoiceNumber) => {
     const text = encodeURIComponent(
       `*Halo Admin ChampionStore_IDN, saya ingin konfirmasi order Robux!*\n\n` +
-        `• *No. Invoice:* ${invoiceNumber}\n` +
+        `• *No. Invoice:* ${inv}\n` +
         `• *Username Roblox:* ${username || "-"}\n` +
         `• *Paket Robux:* ${packagesSummary}\n` +
         `• *Total Robux:* ${totalRobux.toLocaleString("id-ID")} Robux\n` +
@@ -135,15 +202,49 @@ export default function CheckoutModal({
     return `${STORE_CONFIG.whatsappUrl}?text=${text}`;
   };
 
-  const handleWhatsAppCheckout = () => {
+  const handleWhatsAppCheckout = async () => {
     if (!username.trim()) {
       alert("Harap masukkan Username Roblox terlebih dahulu!");
       return;
     }
-    // Open WhatsApp in new tab
-    window.open(generateWhatsAppUrl(), "_blank");
-    // Show success screen
-    setIsSuccess(true);
+
+    try {
+      // Create record in Supabase in background
+      const itemsPayload = cartItems.map((ci) => ({
+        id: ci.item.id,
+        amount: ci.item.amount,
+        price: ci.item.price,
+        quantity: ci.quantity,
+        name: `${ci.item.amount.toLocaleString("id-ID")} Robux`,
+      }));
+
+      const res = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: username.trim(),
+          phone: phoneNumber.trim() || "-",
+          items: itemsPayload,
+          totalRobux,
+          totalPrice,
+          paymentMethod: "whatsapp",
+          customerNote: adminNote.trim() || null,
+        }),
+      });
+
+      const data = await res.json();
+      let inv = invoiceNumber;
+      if (data && data.invoiceNumber) {
+        inv = data.invoiceNumber;
+        setInvoiceNumber(data.invoiceNumber);
+      }
+
+      window.open(generateWhatsAppUrl(inv), "_blank");
+      setIsSuccess(true);
+    } catch {
+      window.open(generateWhatsAppUrl(invoiceNumber), "_blank");
+      setIsSuccess(true);
+    }
   };
 
   const handleResetAndClose = () => {
@@ -151,6 +252,7 @@ export default function CheckoutModal({
     setPhoneNumber("");
     setAdminNote("");
     setProofFile(null);
+    setErrorMessage(null);
     onClose();
   };
 
@@ -348,11 +450,8 @@ export default function CheckoutModal({
               {paymentMethod === "website" ? (
                 <form onSubmit={handleSubmitWebsiteOrder} className="space-y-4">
                   {/* QRIS Code Box */}
-                  <div className="p-3 rounded-2xl bg-slate-950 border border-slate-800 text-center space-y-2">
-                    <span className="text-[11px] font-bold text-slate-400">
-                      Scan QRIS via BCA, Mandiri, BRI, DANA, GoPay, OVO, ShopeePay
-                    </span>
-                    <div className="w-44 h-44 mx-auto bg-white p-2.5 rounded-xl border border-slate-700 flex flex-col items-center justify-center shadow-lg">
+                  <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-center">
+                    <div className="w-44 h-44 bg-white p-2.5 rounded-xl border border-slate-700 flex flex-col items-center justify-center shadow-lg">
                       <ScanBarcode className="w-36 h-36 text-slate-950" />
                     </div>
                   </div>
@@ -450,7 +549,6 @@ export default function CheckoutModal({
                     </p>
                   </div>
 
-                  {/* Optional WhatsApp Number & Note */}
                   <div className="space-y-3">
                     <div className="space-y-1">
                       <label className="text-[11px] font-bold text-slate-300">
@@ -479,7 +577,6 @@ export default function CheckoutModal({
                     </div>
                   </div>
 
-                  {/* Action Button */}
                   <button
                     type="button"
                     onClick={handleWhatsAppCheckout}

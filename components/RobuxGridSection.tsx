@@ -17,16 +17,18 @@ interface RobuxGridSectionProps {
   selectedItem: RobuxItem | null;
   onSelectItem: (item: RobuxItem) => void;
   onAddToCart: (item: RobuxItem) => void;
+  packages?: RobuxItem[];
 }
 
 export default function RobuxGridSection({
   selectedItem,
   onSelectItem,
   onAddToCart,
+  packages = ROBUX_PACKAGES,
 }: RobuxGridSectionProps) {
   const [activeTab, setActiveTab] = useState<string>("all");
 
-  const filteredPackages = ROBUX_PACKAGES.filter((pkg) => {
+  const filteredPackages = packages.filter((pkg) => {
     if (activeTab === "all") return true;
     if (activeTab === "popular") return pkg.category === "popular" || pkg.isBestSeller;
     if (activeTab === "promo") return pkg.isPromo;
@@ -49,9 +51,28 @@ export default function RobuxGridSection({
     }
   };
 
+  const categories = [
+    { id: "all", label: "Semua", count: packages.length },
+    {
+      id: "popular",
+      label: "Populer",
+      count: packages.filter((p) => p.category === "popular" || p.isBestSeller).length,
+    },
+    {
+      id: "promo",
+      label: "Promo",
+      count: packages.filter((p) => p.isPromo).length,
+    },
+    {
+      id: "sultan",
+      label: "Paket Sultan",
+      count: packages.filter((p) => p.isSultan).length,
+    },
+  ];
+
   return (
     <section id="section-pricelist" className="w-full mb-8">
-      <div className="bg-slate-900/80 backdrop-blur-md rounded-3xl border border-slate-800/80 shadow-xl p-4 sm:p-7 md:p-8">
+      <div className="bg-slate-900/95 rounded-3xl border border-slate-800/80 shadow-xl p-4 sm:p-7 md:p-8">
         {/* Section Header */}
         <div className="flex items-start gap-3.5 mb-5">
           <div className="w-8 h-8 rounded-full bg-gradient-to-r from-red-600 to-rose-600 text-white font-black text-sm flex items-center justify-center shadow-md shadow-red-600/30 shrink-0">
@@ -69,7 +90,7 @@ export default function RobuxGridSection({
 
         {/* Category Filter Pills (No Scrollbar, smooth mobile scroll) */}
         <div className="flex items-center gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden pb-2 mb-6">
-          {CATEGORIES.map((cat) => {
+          {categories.map((cat) => {
             const isActive = activeTab === cat.id;
             return (
               <button
@@ -108,15 +129,20 @@ export default function RobuxGridSection({
                 {/* Card Top: Badge on Left + Plus Button on Right */}
                 <div className="flex items-center justify-between min-h-[24px] mb-2">
                   <div>
-                    {item.badge ? (
-                      <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-white shadow-xs ${
-                          item.isSultan
-                            ? "bg-gradient-to-r from-blue-600 to-indigo-600"
-                            : "bg-gradient-to-r from-red-600 to-rose-600"
-                        }`}
-                      >
-                        {item.badge}
+                    {item.amount >= 10000 || item.badge === "SULTAN" || item.badge === "SUPER SULTAN" || item.isSultan ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 text-black text-[9px] sm:text-[10px] font-black uppercase tracking-wider shadow-[0_0_8px_rgba(245,158,11,0.6)]">
+                        <Crown className="w-2.5 h-2.5 fill-black text-black" />
+                        <span>SULTAN</span>
+                      </span>
+                    ) : item.badge === "PROMO" || item.isPromo ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-gradient-to-r from-red-600 via-[#FF1F3D] to-red-600 text-white text-[9px] sm:text-[10px] font-black uppercase tracking-wider shadow-[0_0_8px_rgba(255,31,61,0.6)]">
+                        <Zap className="w-2.5 h-2.5 fill-white text-white" />
+                        <span>PROMO</span>
+                      </span>
+                    ) : item.badge === "POPULER" || item.isBestSeller ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-gradient-to-r from-orange-600 via-amber-500 to-yellow-500 text-white text-[9px] sm:text-[10px] font-black uppercase tracking-wider shadow-[0_0_8px_rgba(249,115,22,0.6)]">
+                        <Flame className="w-2.5 h-2.5 fill-white text-white" />
+                        <span>POPULER</span>
                       </span>
                     ) : (
                       <span />

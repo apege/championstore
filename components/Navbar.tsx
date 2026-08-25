@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import {
   Coins,
@@ -16,10 +16,34 @@ import { STORE_CONFIG } from "@/data/pricelist";
 interface NavbarProps {
   selectedCount?: number;
   onOpenCart?: () => void;
+  initialStoreInfo?: {
+    storeName?: string;
+    whatsappUrl?: string;
+    logoImageUrl?: string;
+  };
 }
 
-export default function Navbar({ selectedCount = 0, onOpenCart }: NavbarProps) {
+export default function Navbar({
+  selectedCount = 0,
+  onOpenCart,
+  initialStoreInfo,
+}: NavbarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [storeInfo, setStoreInfo] = useState({
+    storeName: initialStoreInfo?.storeName || STORE_CONFIG.name,
+    whatsappUrl: initialStoreInfo?.whatsappUrl || STORE_CONFIG.whatsappUrl,
+    logoImageUrl: initialStoreInfo?.logoImageUrl || "/logo.png",
+  });
+
+  useEffect(() => {
+    if (initialStoreInfo) {
+      setStoreInfo({
+        storeName: initialStoreInfo.storeName || STORE_CONFIG.name,
+        whatsappUrl: initialStoreInfo.whatsappUrl || STORE_CONFIG.whatsappUrl,
+        logoImageUrl: initialStoreInfo.logoImageUrl || "/logo.png",
+      });
+    }
+  }, [initialStoreInfo]);
 
   const scrollToSection = (id: string) => {
     setMobileMenuOpen(false);
@@ -39,8 +63,8 @@ export default function Navbar({ selectedCount = 0, onOpenCart }: NavbarProps) {
         >
           <div className="relative h-10 sm:h-11 w-auto shrink-0 flex items-center justify-center">
             <Image
-              src="/logo.png"
-              alt="ChampionStore_IDN Logo"
+              src={storeInfo.logoImageUrl || "/logo.png"}
+              alt={`${storeInfo.storeName} Logo`}
               width={54}
               height={40}
               className="h-10 sm:h-11 w-auto object-contain drop-shadow-[0_0_10px_rgba(37,99,235,0.4)]"
@@ -51,7 +75,16 @@ export default function Navbar({ selectedCount = 0, onOpenCart }: NavbarProps) {
           <div>
             <div className="flex items-center">
               <span className="font-extrabold text-base sm:text-lg tracking-tight text-white">
-                ChampionStore<span className="text-[#FF1F3D] font-black">_IDN</span>
+                {storeInfo.storeName.includes("_") ? (
+                  <>
+                    {storeInfo.storeName.split("_")[0]}
+                    <span className="text-[#FF1F3D] font-black">
+                      _{storeInfo.storeName.split("_")[1]}
+                    </span>
+                  </>
+                ) : (
+                  storeInfo.storeName
+                )}
               </span>
             </div>
             <p className="text-[11px] sm:text-xs text-slate-400 font-medium leading-tight mt-0.5">
@@ -60,7 +93,7 @@ export default function Navbar({ selectedCount = 0, onOpenCart }: NavbarProps) {
           </div>
         </div>
 
-        {/* Desktop Navigation - Distinctive Gaming Icons */}
+        {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center gap-7">
           <button
             onClick={() => scrollToSection("section-pricelist")}
@@ -91,7 +124,7 @@ export default function Navbar({ selectedCount = 0, onOpenCart }: NavbarProps) {
         <div className="flex items-center gap-2">
           {/* Contact CS WhatsApp */}
           <a
-            href={STORE_CONFIG.whatsappUrl}
+            href={storeInfo.whatsappUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-emerald-500/30 bg-emerald-950/30 text-emerald-400 hover:bg-emerald-900/40 hover:border-emerald-500/50 text-xs font-semibold transition-all"
@@ -118,49 +151,58 @@ export default function Navbar({ selectedCount = 0, onOpenCart }: NavbarProps) {
           {/* Mobile menu trigger */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2 rounded-lg text-slate-300 hover:bg-slate-800"
-            aria-label="Toggle menu"
+            className="p-2.5 rounded-xl border border-slate-800 bg-slate-900/80 text-slate-300 hover:text-white md:hidden transition-colors cursor-pointer"
+            aria-label="Toggle Mobile Menu"
           >
             {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
         </div>
       </div>
 
-      {/* Mobile Drawer */}
+      {/* Mobile Drawer Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t border-slate-800 bg-[#080C14] px-4 py-3 space-y-2 shadow-xl animate-in slide-in-from-top-2">
+        <div className="md:hidden border-b border-slate-800 bg-[#080C14]/98 px-4 py-4 space-y-3 animate-in slide-in-from-top-2 duration-200">
           <button
             onClick={() => scrollToSection("section-pricelist")}
-            className="w-full flex items-center gap-2 py-2 px-3 rounded-lg text-slate-200 font-medium text-xs hover:bg-slate-900 text-left"
+            className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-900/60 border border-slate-800 text-slate-200 text-sm font-semibold cursor-pointer"
           >
-            <Coins className="w-3.5 h-3.5 text-amber-400" />
-            <span>Pricelist Robux</span>
+            <div className="flex items-center gap-2.5">
+              <Coins className="w-4 h-4 text-amber-400" />
+              <span>Pricelist Robux</span>
+            </div>
+            <span className="text-xs text-slate-400">Pilih Paket →</span>
           </button>
 
           <button
             onClick={() => scrollToSection("section-workflow")}
-            className="w-full flex items-center gap-2 py-2 px-3 rounded-lg text-slate-200 font-medium text-xs hover:bg-slate-900 text-left"
+            className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-900/60 border border-slate-800 text-slate-200 text-sm font-semibold cursor-pointer"
           >
-            <Compass className="w-3.5 h-3.5 text-blue-400" />
-            <span>Cara Order</span>
+            <div className="flex items-center gap-2.5">
+              <Compass className="w-4 h-4 text-blue-400" />
+              <span>Cara Order</span>
+            </div>
+            <span className="text-xs text-slate-400">Panduan →</span>
           </button>
 
           <button
             onClick={() => scrollToSection("section-testimonials")}
-            className="w-full flex items-center gap-2 py-2 px-3 rounded-lg text-slate-200 font-medium text-xs hover:bg-slate-900 text-left"
+            className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-900/60 border border-slate-800 text-slate-200 text-sm font-semibold cursor-pointer"
           >
-            <Trophy className="w-3.5 h-3.5 text-yellow-400" />
-            <span>Testimoni</span>
+            <div className="flex items-center gap-2.5">
+              <Trophy className="w-4 h-4 text-yellow-400" />
+              <span>Testimoni</span>
+            </div>
+            <span className="text-xs text-slate-400">Ulasan →</span>
           </button>
 
           <a
-            href={STORE_CONFIG.whatsappUrl}
+            href={storeInfo.whatsappUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs text-center"
+            className="w-full flex items-center justify-center gap-2 p-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold shadow-md transition-colors"
           >
-            <MessageSquareHeart className="w-3.5 h-3.5" />
-            <span>Hubungi CS (WhatsApp)</span>
+            <MessageSquareHeart className="w-4 h-4" />
+            <span>Chat Admin WhatsApp</span>
           </a>
         </div>
       )}

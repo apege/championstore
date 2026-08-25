@@ -1,182 +1,115 @@
-"use client";
+import { supabaseAdmin } from "@/lib/supabase/server";
+import { ROBUX_PACKAGES, STORE_CONFIG } from "@/data/pricelist";
+import HomeClient, { InitialStoreConfig } from "@/components/HomeClient";
+import { RobuxItem } from "@/types";
 
-import React, { useState } from "react";
-import { RobuxItem, CartItem, PaymentMethodId } from "@/types";
-import { ROBUX_PACKAGES } from "@/data/pricelist";
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
-import Navbar from "@/components/Navbar";
-import BackgroundEffects from "@/components/BackgroundEffects";
-import HeroBanner from "@/components/HeroBanner";
-import FeaturesBar from "@/components/FeaturesBar";
-import AccountInputSection from "@/components/AccountInputSection";
-import RobuxGridSection from "@/components/RobuxGridSection";
-import PaymentMethodSection from "@/components/PaymentMethodSection";
-import WorkflowSection from "@/components/WorkflowSection";
-import TestimonialsSection from "@/components/TestimonialsSection";
-import FloatingBottomBar from "@/components/FloatingBottomBar";
-import CartModal from "@/components/CartModal";
-import CheckoutModal from "@/components/CheckoutModal";
-import Footer from "@/components/Footer";
-
-export default function Home() {
-  // Default selected package
-  const defaultPackage =
-    ROBUX_PACKAGES.find((p) => p.amount === 2200) || ROBUX_PACKAGES[1];
-
-  const [selectedItem, setSelectedItem] = useState<RobuxItem | null>(defaultPackage);
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
-  const [username, setUsername] = useState<string>("");
-  const [paymentMethod, setPaymentMethod] =
-    useState<PaymentMethodId>("website");
-  const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
-  const [isCheckoutOpen, setIsCheckoutOpen] = useState<boolean>(false);
-
-  // Single card selection
-  const handleSelectItem = (item: RobuxItem) => {
-    setSelectedItem(item);
+export default async function Home() {
+  // Fetch store_settings and active products directly from Supabase on the server
+  let initialStore: InitialStoreConfig = {
+    storeName: STORE_CONFIG.name,
+    whatsappNumber: STORE_CONFIG.whatsappNumber,
+    whatsappUrl: STORE_CONFIG.whatsappUrl,
+    qrisImageUrl: "/qris.webp",
+    logoImageUrl: "/logo.png",
+    bannerImageUrl: "/roblox_hero.jpg",
+    promoActive: true,
+    promoTag: "PROMO SPESIAL BULAN INI",
+    promoBadge: "LIMITED STOCK",
+    promoTitle: "ROBUX BULAN INI",
+    promoSubtitle:
+      "Top Up Robux Instant, Cepat, Legal, Aman & Bergaransi 100% Uang Kembali!",
+    promoRobuxAmount: 2200,
+    promoOriginalLabel: "2.000 Robux",
+    promoDiscountPrice: 45000,
   };
 
-  // Add to cart button (+) adds item to the cart in navbar
-  const handleAddToCart = (item: RobuxItem) => {
-    setCartItems((prev) => {
-      const existingIndex = prev.findIndex((ci) => ci.item.id === item.id);
-      if (existingIndex > -1) {
-        const updated = [...prev];
-        updated[existingIndex] = {
-          ...updated[existingIndex],
-          quantity: updated[existingIndex].quantity + 1,
+  let initialProducts: RobuxItem[] = ROBUX_PACKAGES;
+
+  try {
+    const [storeRes, prodRes] = await Promise.all([
+      supabaseAdmin
+        .from("store_settings")
+        .select("*")
+        .order("id", { ascending: true })
+        .limit(1)
+        .maybeSingle(),
+      supabaseAdmin
+        .from("products")
+        .select("*")
+        .eq("is_active", true)
+        .order("robux", { ascending: true }),
+    ]);
+
+    if (storeRes.data) {
+      const s = storeRes.data;
+      const cleanWa = (s.whatsapp_number || STORE_CONFIG.whatsappNumber).replace(
+        /[^0-9]/g,
+        ""
+      );
+      initialStore = {
+        storeName: s.store_name || STORE_CONFIG.name,
+        whatsappNumber: cleanWa,
+        whatsappUrl: `https://wa.me/${cleanWa}`,
+        qrisImageUrl: s.qris_image_path || "/qris.webp",
+        logoImageUrl: s.logo_image_path || "/logo.png",
+        bannerImageUrl: s.banner_image_path || "/roblox_hero.jpg",
+        promoActive: s.promo_active === true,
+        promoTag: s.promo_tag || "PROMO SPESIAL BULAN INI",
+        promoBadge: s.promo_badge || "LIMITED STOCK",
+        promoTitle: s.promo_title || "ROBUX BULAN INI",
+        promoSubtitle:
+          s.promo_subtitle ||
+          "Top Up Robux Instant, Cepat, Legal, Aman & Bergaransi 100% Uang Kembali!",
+        promoRobuxAmount: Number(s.promo_robux_amount) || 2200,
+        promoOriginalLabel: s.promo_original_label || "2.000 Robux",
+        promoDiscountPrice: Number(s.promo_discount_price) || 45000,
+        promoEndDate: s.promo_end_date || undefined,
+      };
+    }
+
+    if (prodRes.data && prodRes.data.length > 0) {
+      initialProducts = prodRes.data.map((p) => {
+        const isPromo = p.robux === 2200;
+        const isSultan = p.robux >= 10000;
+        const isBestSeller = p.robux === 5500;
+        let badge: string | undefined = undefined;
+        if (isPromo) badge = "PROMO";
+        else if (isSultan) badge = "SULTAN";
+        else if (isBestSeller) badge = "POPULER";
+
+        let category: "popular" | "promo" | "sultan" | "regular" = "regular";
+        if (isSultan) category = "sultan";
+        else if (isPromo) category = "promo";
+        else if ([2700, 3200, 4200, 5500].includes(p.robux))
+          category = "popular";
+
+        return {
+          id: `rbx-${p.robux}`,
+          dbId: p.id,
+          amount: p.robux,
+          price: Number(p.price),
+          originalPrice: isPromo ? 50000 : isBestSeller ? 115000 : undefined,
+          isPromo,
+          isBestSeller,
+          isSultan,
+          badge,
+          category,
+          stock: 999,
+          isActive: p.is_active,
         };
-        return updated;
-      }
-      return [...prev, { item, quantity: 1 }];
-    });
-  };
-
-  const handleUpdateQuantity = (itemId: string, delta: number) => {
-    setCartItems((prev) => {
-      return prev
-        .map((ci) => {
-          if (ci.item.id === itemId) {
-            const newQty = ci.quantity + delta;
-            return newQty > 0 ? { ...ci, quantity: newQty } : null;
-          }
-          return ci;
-        })
-        .filter(Boolean) as CartItem[];
-    });
-  };
-
-  const handleRemoveItem = (itemId: string) => {
-    setCartItems((prev) => prev.filter((ci) => ci.item.id !== itemId));
-  };
-
-  const handleClearCart = () => {
-    setCartItems([]);
-  };
-
-  const handleSelectPromo = () => {
-    const promo = ROBUX_PACKAGES.find((p) => p.amount === 2200);
-    if (promo) {
-      setSelectedItem(promo);
+      });
     }
-  };
-
-  const handleOpenCart = () => {
-    setIsCartOpen(true);
-  };
-
-  const handleOpenCheckout = () => {
-    if (cartItems.length === 0 && !selectedItem) {
-      alert("Silakan pilih paket Robux terlebih dahulu!");
-      return;
-    }
-    setIsCheckoutOpen(true);
-  };
-
-  const totalCartCount = cartItems.reduce((acc, ci) => acc + ci.quantity, 0);
-
-  // Checkout items to pass
-  const checkoutItems: CartItem[] =
-    cartItems.length > 0
-      ? cartItems
-      : selectedItem
-      ? [{ item: selectedItem, quantity: 1 }]
-      : [];
+  } catch (err) {
+    console.warn("SSR store fetch fallback:", err);
+  }
 
   return (
-    <div className="relative min-h-screen bg-[#080C14] text-slate-100 font-sans selection:bg-red-600 selection:text-white flex flex-col">
-      {/* Background Animated & 3D Red-Blue Sparkles / Roblox Cubes */}
-      <BackgroundEffects />
-
-      {/* Header Navigation with Cart Count */}
-      <Navbar
-        selectedCount={totalCartCount}
-        onOpenCart={handleOpenCart}
-      />
-
-      {/* Main Dashboard Container */}
-      <main className="relative z-10 flex-1 max-w-6xl w-full mx-auto px-3 sm:px-6 py-3 sm:py-6">
-        {/* Section 0: Hero Promo Banner with Realtime Countdown */}
-        <HeroBanner onSelectPromo={handleSelectPromo} />
-
-        {/* Features & Trust Guarantees Auto-scrolling Bar */}
-        <FeaturesBar />
-
-        {/* Section 1: Masukkan Data Akun */}
-        <AccountInputSection
-          username={username}
-          onUsernameChange={setUsername}
-        />
-
-        {/* Section 2: Pilih Robux (Pricelist Resmi Champion Store) */}
-        <RobuxGridSection
-          selectedItem={selectedItem}
-          onSelectItem={handleSelectItem}
-          onAddToCart={handleAddToCart}
-        />
-
-        {/* Section 3: Pilih Pembayaran (QRIS / WhatsApp) */}
-        <PaymentMethodSection
-          selectedMethod={paymentMethod}
-          onSelectMethod={setPaymentMethod}
-        />
-
-        {/* Section 4: Alur Transaksi Mudah & Cepat */}
-        <WorkflowSection />
-
-        {/* Section 5: Testimoni Pelanggan */}
-        <TestimonialsSection />
-      </main>
-
-      {/* Sticky Bottom Bar matching BloxyLucy reference */}
-      <FloatingBottomBar
-        selectedItem={selectedItem}
-        cartItems={cartItems}
-        onCheckout={handleOpenCheckout}
-      />
-
-      {/* Clean Multi-Item Cart Modal */}
-      <CartModal
-        isOpen={isCartOpen}
-        onClose={() => setIsCartOpen(false)}
-        cartItems={cartItems}
-        onUpdateQuantity={handleUpdateQuantity}
-        onRemoveItem={handleRemoveItem}
-        onClearCart={handleClearCart}
-        onProceedToCheckout={handleOpenCheckout}
-      />
-
-      {/* Interactive Checkout Modal (QRIS scan / direct WhatsApp) */}
-      <CheckoutModal
-        isOpen={isCheckoutOpen}
-        onClose={() => setIsCheckoutOpen(false)}
-        cartItems={checkoutItems}
-        username={username}
-        paymentMethod={paymentMethod}
-      />
-
-      {/* Brand Footer */}
-      <Footer />
-    </div>
+    <HomeClient
+      initialStore={initialStore}
+      initialProducts={initialProducts}
+    />
   );
 }

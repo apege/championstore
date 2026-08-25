@@ -33,7 +33,7 @@ export default function WorkflowSection() {
 
   return (
     <section id="section-workflow" className="w-full mb-8">
-      <div className="bg-slate-900/80 backdrop-blur-md rounded-3xl border border-slate-800/80 shadow-xl p-4 sm:p-7 md:p-8">
+      <div className="bg-slate-900/95 rounded-3xl border border-slate-800/80 shadow-xl p-4 sm:p-7 md:p-8">
         {/* Header Title */}
         <div className="text-center max-w-xl mx-auto mb-10">
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-950/50 border border-red-800/50 text-red-400 text-xs font-black uppercase tracking-wider mb-3">
