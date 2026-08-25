@@ -17,7 +17,9 @@ import {
   Check,
   Zap,
   Clock,
-  ExternalLink,
+  ChevronLeft,
+  ChevronRight,
+  X,
 } from "lucide-react";
 
 interface AdminPengaturanTokoProps {
@@ -54,13 +56,177 @@ export default function AdminPengaturanToko({
   const [promoOriginalPrice, setPromoOriginalPrice] = useState("2.000 Robux");
   const [promoPrice, setPromoPrice] = useState("45.000");
   const [promoDeadline, setPromoDeadline] = useState(
-    "1 September 2026 • 06:59 WIB"
+    "1 Oktober 2026 • 06:59 WIB"
   );
+  const [promoDeadlineRaw, setPromoDeadlineRaw] = useState<string>("2026-10-01T06:59");
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const [bannerImage, setBannerImage] = useState<string>("/roblox_hero.jpg");
+
+  // Custom Calendar state matching exact design in screenshot
+  const MONTH_NAMES = [
+    "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+    "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+  ];
+  const DAYS_OF_WEEK = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
+
+  const [calendarSelectedDate, setCalendarSelectedDate] = useState<Date>(() => new Date(2026, 9, 1));
+  const [viewYear, setViewYear] = useState<number>(() => 2026);
+  const [viewMonth, setViewMonth] = useState<number>(() => 9); // October
+  const [selectedHour, setSelectedHour] = useState<number>(6);
+  const [selectedMinute, setSelectedMinute] = useState<number>(59);
+  const [activePreset, setActivePreset] = useState<string | null>("Akhir Bulan");
+
+  // Helper format Indonesian date
+  const formatIndonesianDate = (dateStr: string) => {
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      const day = d.getDate();
+      const month = MONTH_NAMES[d.getMonth()];
+      const year = d.getFullYear();
+      const hours = String(d.getHours()).padStart(2, "0");
+      const minutes = String(d.getMinutes()).padStart(2, "0");
+      return `${day} ${month} ${year} • ${hours}:${minutes} WIB`;
+    } catch {
+      return dateStr;
+    }
+  };
+
+  const handleApplyPreset = (preset: string) => {
+    setActivePreset(preset);
+    const now = new Date();
+    let target = new Date();
+    if (preset === "+3 Hari") {
+      target = new Date(now.getTime() + 3 * 86400 * 1000);
+    } else if (preset === "+7 Hari") {
+      target = new Date(now.getTime() + 7 * 86400 * 1000);
+    } else if (preset === "+14 Hari") {
+      target = new Date(now.getTime() + 14 * 86400 * 1000);
+    } else if (preset === "Akhir Bulan") {
+      target = new Date(viewYear, viewMonth + 1, 0);
+    }
+    setCalendarSelectedDate(target);
+    setViewYear(target.getFullYear());
+    setViewMonth(target.getMonth());
+  };
+
+  const handlePrevMonth = () => {
+    if (viewMonth === 0) {
+      setViewYear(viewYear - 1);
+      setViewMonth(11);
+    } else {
+      setViewMonth(viewMonth - 1);
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (viewMonth === 11) {
+      setViewYear(viewYear + 1);
+      setViewMonth(0);
+    } else {
+      setViewMonth(viewMonth + 1);
+    }
+  };
+
+  const getCalendarCells = (year: number, month: number) => {
+    const firstDayIndex = new Date(year, month, 1).getDay(); // 0 = Sun
+    const totalDaysInMonth = new Date(year, month + 1, 0).getDate();
+    const prevMonthDays = new Date(year, month, 0).getDate();
+
+    const cells: { day: number; isCurrentMonth: boolean; date: Date }[] = [];
+
+    // Previous month padding
+    for (let i = firstDayIndex - 1; i >= 0; i--) {
+      const d = prevMonthDays - i;
+      cells.push({
+        day: d,
+        isCurrentMonth: false,
+        date: new Date(year, month - 1, d),
+      });
+    }
+
+    // Current month days
+    for (let i = 1; i <= totalDaysInMonth; i++) {
+      cells.push({
+        day: i,
+        isCurrentMonth: true,
+        date: new Date(year, month, i),
+      });
+    }
+
+    // Next month padding to fill complete weeks (multiples of 7)
+    const remaining = (7 - (cells.length % 7)) % 7;
+    for (let i = 1; i <= remaining; i++) {
+      cells.push({
+        day: i,
+        isCurrentMonth: false,
+        date: new Date(year, month + 1, i),
+      });
+    }
+
+    return cells;
+  };
+
+  const handleApplyCustomPromoTime = () => {
+    const finalDate = new Date(
+      calendarSelectedDate.getFullYear(),
+      calendarSelectedDate.getMonth(),
+      calendarSelectedDate.getDate(),
+      selectedHour,
+      selectedMinute
+    );
+    const day = finalDate.getDate();
+    const month = MONTH_NAMES[finalDate.getMonth()];
+    const year = finalDate.getFullYear();
+    const hh = String(selectedHour).padStart(2, "0");
+    const mm = String(selectedMinute).padStart(2, "0");
+    const formatted = `${day} ${month} ${year} • ${hh}:${mm} WIB`;
+
+    const iso = new Date(finalDate.getTime() - finalDate.getTimezoneOffset() * 60000)
+      .toISOString()
+      .slice(0, 16);
+
+    setPromoDeadline(formatted);
+    setPromoDeadlineRaw(iso);
+    setIsDatePickerOpen(false);
+    onToast(`Waktu berakhir promo diset ke: ${formatted}`, "success");
+  };
 
   // Section 3: QRIS & Store Logo
   const [qrisImage, setQrisImage] = useState<string>("/qris.webp");
   const [storeLogoImage, setStoreLogoImage] = useState<string>("/logo.png");
+
+  // Fetch settings from API
+  React.useEffect(() => {
+    async function loadSettings() {
+      try {
+        const res = await fetch("/api/store");
+        const json = await res.json();
+        if (json.success && json.data) {
+          if (json.data.storeName) setStoreName(json.data.storeName);
+          if (json.data.whatsappNumber) setWhatsappAdmin(json.data.whatsappNumber);
+          if (json.data.qrisImageUrl) setQrisImage(json.data.qrisImageUrl);
+          if (json.data.logoImageUrl) setStoreLogoImage(json.data.logoImageUrl);
+          if (json.data.bannerImageUrl) setBannerImage(json.data.bannerImageUrl);
+          if (json.data.promoTag) setPromoTag(json.data.promoTag);
+          if (json.data.promoBadge) setPromoBadge(json.data.promoBadge);
+          if (json.data.promoTitle) setPromoTitle(json.data.promoTitle);
+          if (json.data.promoSubtitle) setPromoDesc(json.data.promoSubtitle);
+          if (json.data.promoRobuxAmount) setPromoNominal(Number(json.data.promoRobuxAmount).toLocaleString("id-ID"));
+          if (json.data.promoOriginalLabel) setPromoOriginalPrice(json.data.promoOriginalLabel);
+          if (json.data.promoDiscountPrice) setPromoPrice(Number(json.data.promoDiscountPrice).toLocaleString("id-ID"));
+          if (json.data.promoActive !== undefined) setIsPromoActive(Boolean(json.data.promoActive));
+          if (json.data.promoEndDate) {
+            setPromoDeadlineRaw(json.data.promoEndDate);
+            setPromoDeadline(formatIndonesianDate(json.data.promoEndDate));
+          }
+        }
+      } catch (e) {
+        console.warn("Failed to load store settings:", e);
+      }
+    }
+    loadSettings();
+  }, []);
 
   // Toggle all sections
   const isAllOpen =
@@ -82,7 +248,7 @@ export default function AdminPengaturanToko({
     }));
   };
 
-  // Image Upload Simulations
+  // Image Upload
   const handleBannerUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
@@ -104,7 +270,7 @@ export default function AdminPengaturanToko({
       reader.onload = () => {
         if (reader.result) {
           setQrisImage(reader.result as string);
-          onToast("Barcode QRIS baru berhasil diunggah!", "success");
+          onToast("Foto barcode QRIS berhasil diunggah!", "success");
         }
       };
       reader.readAsDataURL(file);
@@ -125,8 +291,48 @@ export default function AdminPengaturanToko({
     }
   };
 
-  const handleSaveAll = () => {
-    onToast("Semua pengaturan toko & banner berhasil disimpan!", "success");
+  const [isSaving, setIsSaving] = useState(false);
+  const [savedSuccess, setSavedSuccess] = useState(false);
+
+  const handleSaveAll = async () => {
+    try {
+      setIsSaving(true);
+      setSavedSuccess(false);
+      const cleanWa = whatsappAdmin.replace(/[^0-9]/g, "");
+      const res = await fetch("/api/store", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          storeName,
+          whatsappNumber: cleanWa,
+          whatsappUrl: `https://wa.me/${cleanWa}`,
+          qrisImageUrl: qrisImage,
+          logoImageUrl: storeLogoImage,
+          bannerImageUrl: bannerImage,
+          promoActive: isPromoActive,
+          promoTag,
+          promoBadge,
+          promoTitle,
+          promoSubtitle: promoDesc,
+          promoRobuxAmount: parseInt(promoNominal.replace(/[^0-9]/g, ""), 10) || 2200,
+          promoOriginalLabel: promoOriginalPrice,
+          promoDiscountPrice: parseInt(promoPrice.replace(/[^0-9]/g, ""), 10) || 45000,
+          promoEndDate: promoDeadlineRaw || promoDeadline,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Gagal menyimpan");
+      }
+      setSavedSuccess(true);
+      onToast("Perubahan pengaturan toko & banner berhasil disimpan ke database!", "success");
+      setTimeout(() => setSavedSuccess(false), 4000);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Gagal menyimpan pengaturan";
+      onToast(msg, "error");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -394,9 +600,12 @@ export default function AdminPengaturanToko({
                 <label className="text-xs font-bold text-slate-300">
                   Waktu Berakhir Promo (Countdown Timer)
                 </label>
-                <div className="p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800 flex items-center justify-between gap-3">
+                <div
+                  onClick={() => setIsDatePickerOpen(true)}
+                  className="p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800 hover:border-red-500/50 flex items-center justify-between gap-3 cursor-pointer transition-all group"
+                >
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-xl bg-red-950/60 border border-red-800/50 text-[#FF1F3D] flex items-center justify-center">
+                    <div className="w-8 h-8 rounded-xl bg-red-950/60 border border-red-800/50 text-[#FF1F3D] flex items-center justify-center group-hover:scale-105 transition-transform">
                       <Calendar className="w-4 h-4" />
                     </div>
                     <div>
@@ -411,7 +620,10 @@ export default function AdminPengaturanToko({
 
                   <button
                     type="button"
-                    onClick={() => onToast("Pengaturan tanggal dibuka", "info")}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsDatePickerOpen(true);
+                    }}
                     className="px-3.5 py-1.5 rounded-xl bg-red-950/40 hover:bg-red-900/60 border border-red-800/40 text-[#FF1F3D] hover:text-red-300 text-xs font-bold transition-all active:scale-95 cursor-pointer"
                   >
                     UBAH
@@ -745,15 +957,210 @@ export default function AdminPengaturanToko({
       {/* ======================================================== */}
       {/* BOTTOM ACTION BUTTON: SIMPAN SEMUA PENGATURAN */}
       {/* ======================================================== */}
-      <div className="flex justify-end pt-2">
+      <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-2">
+        {savedSuccess && (
+          <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-950/80 border border-emerald-500/50 text-emerald-300 text-xs font-bold shadow-[0_0_12px_rgba(16,185,129,0.3)] animate-in fade-in duration-200">
+            <Check className="w-4 h-4 text-emerald-400" />
+            <span>Pengaturan berhasil disimpan ke database!</span>
+          </div>
+        )}
+
         <button
           onClick={handleSaveAll}
-          className="inline-flex items-center gap-2.5 px-8 py-3.5 rounded-2xl bg-gradient-to-r from-red-600 via-[#FF1F3D] to-red-600 hover:from-red-500 hover:to-[#FF1F3D] text-white text-sm font-extrabold shadow-[0_0_20px_rgba(255,31,61,0.6)] active:scale-95 transition-all cursor-pointer"
+          disabled={isSaving}
+          className="inline-flex items-center gap-2.5 px-8 py-3.5 rounded-2xl bg-gradient-to-r from-red-600 via-[#FF1F3D] to-red-600 hover:from-red-500 hover:to-[#FF1F3D] text-white text-sm font-extrabold shadow-[0_0_20px_rgba(255,31,61,0.6)] active:scale-95 transition-all cursor-pointer disabled:opacity-60"
         >
-          <Save className="w-4 h-4" />
-          <span>Simpan Semua Pengaturan</span>
+          {isSaving ? (
+            <>
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              <span>Menyimpan ke Supabase...</span>
+            </>
+          ) : (
+            <>
+              <Save className="w-4 h-4" />
+              <span>Simpan Semua Pengaturan</span>
+            </>
+          )}
         </button>
       </div>
+
+      {/* ======================================================== */}
+      {/* MODAL: PENGATUR TANGGAL & JAM HITUNG MUNDUR PROMO */}
+      {/* ======================================================== */}
+      {isDatePickerOpen && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="w-full max-w-[390px] bg-[#0B0F1A] border border-slate-800 text-white rounded-[32px] p-6 shadow-[0_0_50px_rgba(255,31,61,0.25)] space-y-4 animate-in zoom-in-95 duration-200">
+            {/* Top Quick Presets Row */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+              {[
+                { label: "+3 Hari", id: "+3 Hari" },
+                { label: "+7 Hari", id: "+7 Hari" },
+                { label: "+14 Hari", id: "+14 Hari" },
+                { label: "Akhir Bulan", id: "Akhir Bulan" },
+              ].map((preset) => (
+                <button
+                  key={preset.id}
+                  type="button"
+                  onClick={() => handleApplyPreset(preset.id)}
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-black transition-all cursor-pointer whitespace-nowrap ${
+                    activePreset === preset.id
+                      ? "bg-gradient-to-r from-red-600 via-[#FF1F3D] to-red-600 text-white shadow-md shadow-red-600/40 border border-red-500"
+                      : "bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:border-red-500/40 hover:bg-red-950/30"
+                  }`}
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Month & Year Header with Navigation Arrows */}
+            <div className="flex items-center justify-between pt-1">
+              <h3 className="text-lg font-black text-white tracking-tight">
+                {MONTH_NAMES[viewMonth]} {viewYear}
+              </h3>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={handlePrevMonth}
+                  className="w-8 h-8 rounded-xl border border-slate-800 bg-slate-900/80 flex items-center justify-center text-blue-400 hover:bg-blue-950/50 hover:border-blue-500/40 transition-colors cursor-pointer"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={handleNextMonth}
+                  className="w-8 h-8 rounded-xl border border-slate-800 bg-slate-900/80 flex items-center justify-center text-blue-400 hover:bg-blue-950/50 hover:border-blue-500/40 transition-colors cursor-pointer"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Days of Week Header */}
+            <div className="grid grid-cols-7 gap-1 text-center">
+              {DAYS_OF_WEEK.map((day, idx) => (
+                <div
+                  key={day}
+                  className={`text-xs font-black py-1 ${
+                    idx === 0 ? "text-[#FF1F3D]" : "text-slate-400"
+                  }`}
+                >
+                  {day}
+                </div>
+              ))}
+            </div>
+
+            {/* Calendar Days Grid */}
+            <div className="grid grid-cols-7 gap-1 text-center">
+              {getCalendarCells(viewYear, viewMonth).map((cell, index) => {
+                const isSelected =
+                  cell.isCurrentMonth &&
+                  calendarSelectedDate.getDate() === cell.day &&
+                  calendarSelectedDate.getMonth() === viewMonth &&
+                  calendarSelectedDate.getFullYear() === viewYear;
+
+                return (
+                  <button
+                    key={index}
+                    type="button"
+                    onClick={() => {
+                      setCalendarSelectedDate(cell.date);
+                      setViewYear(cell.date.getFullYear());
+                      setViewMonth(cell.date.getMonth());
+                      setActivePreset(null);
+                    }}
+                    className={`h-9 w-9 mx-auto flex items-center justify-center text-xs font-extrabold rounded-2xl transition-all cursor-pointer ${
+                      isSelected
+                        ? "bg-gradient-to-r from-red-600 via-[#FF1F3D] to-red-600 text-white shadow-lg shadow-red-600/50 border border-red-400 scale-105"
+                        : cell.isCurrentMonth
+                        ? "text-slate-200 hover:bg-blue-950/40 hover:text-blue-300 hover:border hover:border-blue-500/30"
+                        : "text-slate-700 font-medium cursor-default"
+                    }`}
+                  >
+                    {cell.day}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Divider */}
+            <div className="border-t border-slate-800/80 pt-3" />
+
+            {/* Time Configuration Section */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded-full border-2 border-[#FF1F3D] flex items-center justify-center">
+                    <div className="w-1.5 h-1.5 rounded-full bg-[#FF1F3D]" />
+                  </div>
+                  <span className="font-extrabold text-xs sm:text-sm text-white">
+                    Atur Jam &amp; Menit Berakhir
+                  </span>
+                </div>
+                <span className="px-2.5 py-1 rounded-lg bg-red-950/70 border border-red-800/60 text-[#FF1F3D] font-mono font-black text-xs tracking-wider">
+                  {String(selectedHour).padStart(2, "0")}:
+                  {String(selectedMinute).padStart(2, "0")} WIB
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-extrabold text-slate-400">
+                    Jam (00 - 23)
+                  </label>
+                  <select
+                    value={selectedHour}
+                    onChange={(e) => setSelectedHour(Number(e.target.value))}
+                    className="w-full bg-[#080C14] text-white border border-slate-800 focus:border-[#FF1F3D] rounded-2xl px-3 py-2 text-xs font-black focus:outline-none [color-scheme:dark]"
+                  >
+                    {Array.from({ length: 24 }).map((_, i) => (
+                      <option key={i} value={i} className="bg-[#0B0F1A] text-white">
+                        {String(i).padStart(2, "0")} : 00
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-extrabold text-slate-400">
+                    Menit (00 - 59)
+                  </label>
+                  <select
+                    value={selectedMinute}
+                    onChange={(e) => setSelectedMinute(Number(e.target.value))}
+                    className="w-full bg-[#080C14] text-white border border-slate-800 focus:border-[#FF1F3D] rounded-2xl px-3 py-2 text-xs font-black focus:outline-none [color-scheme:dark]"
+                  >
+                    {Array.from({ length: 60 }).map((_, i) => (
+                      <option key={i} value={i} className="bg-[#0B0F1A] text-white">
+                        Menit {String(i).padStart(2, "0")}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="pt-2 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsDatePickerOpen(false)}
+                className="py-3.5 px-4 rounded-2xl bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 font-extrabold text-xs transition-all cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleApplyCustomPromoTime}
+                className="flex-1 py-3.5 rounded-2xl bg-gradient-to-r from-red-600 via-[#FF1F3D] to-red-600 hover:from-red-500 hover:to-rose-500 text-white font-extrabold text-xs sm:text-sm shadow-xl shadow-red-600/30 flex items-center justify-center gap-2 transition-all active:scale-98 cursor-pointer"
+              >
+                <Check className="w-4 h-4 stroke-[3]" />
+                <span>Terapkan Waktu Promo</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

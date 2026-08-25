@@ -8,36 +8,58 @@ interface AdminActivityProps {
 }
 
 export default function AdminActivity({ onViewAll }: AdminActivityProps) {
-  const activities = [
+  const [activities, setActivities] = React.useState<
     {
-      id: 1,
-      dotColor: "bg-red-500 shadow-[0_0_8px_#ef4444]",
-      time: "10 mnt lalu",
-      title: "Order #CLX25051893 masuk",
-      user: "PinkQueen_23",
-    },
-    {
-      id: 2,
-      dotColor: "bg-blue-500 shadow-[0_0_8px_#3b82f6]",
-      time: "25 mnt lalu",
-      title: "Order #CLX25051890 selesai",
-      user: "gaming_pro21",
-    },
-    {
-      id: 3,
-      dotColor: "bg-cyan-400 shadow-[0_0_8px_#22d3ee]",
-      time: "1 jam lalu",
-      title: 'Produk "5600 Robux" ditambahkan',
-      user: null,
-    },
-    {
-      id: 4,
-      dotColor: "bg-red-500 shadow-[0_0_8px_#ef4444]",
-      time: "2 jam lalu",
-      title: "Pelanggan baru mendaftar",
-      user: "star_lucy08",
-    },
-  ];
+      id: string;
+      dotColor: string;
+      time: string;
+      title: string;
+      user: string | null;
+    }[]
+  >([]);
+
+  React.useEffect(() => {
+    async function loadLogs() {
+      try {
+        const res = await fetch("/api/admin/logs?limit=4");
+        const json = await res.json();
+        if (json.success && json.data && json.data.length > 0) {
+          const formatted = json.data.map((log: any) => {
+            const timeAgo = new Date(log.created_at || Date.now()).toLocaleTimeString("id-ID", {
+              hour: "2-digit",
+              minute: "2-digit",
+            });
+            let dotColor = "bg-red-500 shadow-[0_0_8px_#ef4444]";
+            if (log.type === "status") dotColor = "bg-blue-500 shadow-[0_0_8px_#3b82f6]";
+            if (log.type === "product") dotColor = "bg-cyan-400 shadow-[0_0_8px_#22d3ee]";
+            if (log.type === "system") dotColor = "bg-emerald-400 shadow-[0_0_8px_#10b981]";
+
+            return {
+              id: log.id,
+              dotColor,
+              time: timeAgo,
+              title: log.details || log.action,
+              user: log.user_target || null,
+            };
+          });
+          setActivities(formatted);
+        } else {
+          setActivities([
+            {
+              id: "1",
+              dotColor: "bg-emerald-400 shadow-[0_0_8px_#10b981]",
+              time: "Baru saja",
+              title: "Backend Supabase terhubung ke sistem",
+              user: "Admin",
+            },
+          ]);
+        }
+      } catch (err) {
+        console.warn("Failed to fetch logs:", err);
+      }
+    }
+    loadLogs();
+  }, []);
 
   return (
     <div className="rounded-3xl bg-[#0B0F19] border border-slate-800/80 p-4 sm:p-4.5 flex flex-col justify-between shadow-lg h-full">

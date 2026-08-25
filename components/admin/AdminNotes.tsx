@@ -1,16 +1,36 @@
 "use client";
 
-import React, { useState } from "react";
-import { Edit3, Pin, Crown, Check, Save } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Edit3, Crown } from "lucide-react";
 
 interface AdminNotesProps {
+  note?: string;
   onOpenEditModal?: () => void;
 }
 
-export default function AdminNotes({ onOpenEditModal }: AdminNotesProps) {
+export default function AdminNotes({ note, onOpenEditModal }: AdminNotesProps) {
   const [noteContent, setNoteContent] = useState<string>(
-    "Catatan penting untuk tim admin...\nContoh: Stok Robux normal, promo weekend aktif, cek komplain pelanggan setiap hari."
+    note || "Catatan penting untuk tim operasional toko."
   );
+
+  useEffect(() => {
+    if (note) {
+      setNoteContent(note);
+    } else {
+      async function loadNote() {
+        try {
+          const res = await fetch("/api/store");
+          const json = await res.json();
+          if (json.success && json.data && json.data.adminNote) {
+            setNoteContent(json.data.adminNote);
+          }
+        } catch (err) {
+          console.warn("Failed to load note:", err);
+        }
+      }
+      loadNote();
+    }
+  }, [note]);
 
   return (
     <div className="rounded-3xl bg-[#0B0F19] border border-slate-800/80 p-5 sm:p-6 shadow-lg relative flex flex-col justify-between overflow-hidden">
@@ -45,7 +65,7 @@ export default function AdminNotes({ onOpenEditModal }: AdminNotesProps) {
       <div className="pt-4 border-t border-slate-800/60 mt-4">
         <button
           onClick={onOpenEditModal}
-          className="w-full py-2.5 px-4 rounded-xl bg-red-950/30 hover:bg-red-900/40 border border-red-800/60 hover:border-red-500/80 text-xs font-bold text-red-400 hover:text-red-300 transition-all flex items-center justify-center gap-2 shadow-[0_0_10px_rgba(239,68,68,0.15)] active:scale-98"
+          className="w-full py-2.5 px-4 rounded-xl bg-red-950/30 hover:bg-red-900/40 border border-red-800/60 hover:border-red-500/80 text-xs font-bold text-red-400 hover:text-red-300 transition-all flex items-center justify-center gap-2 shadow-[0_0_10px_rgba(239,68,68,0.15)] active:scale-98 cursor-pointer"
         >
           <Edit3 className="w-3.5 h-3.5" />
           <span>Edit Catatan</span>

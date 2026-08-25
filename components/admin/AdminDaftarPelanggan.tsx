@@ -33,92 +33,70 @@ export default function AdminDaftarPelanggan({
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [confirmBlacklistTarget, setConfirmBlacklistTarget] =
     useState<CustomerItem | null>(null);
+  const [customers, setCustomers] = useState<CustomerItem[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const [customers, setCustomers] = useState<CustomerItem[]>([
-    {
-      id: "1",
-      username: "APG_Channel11",
-      robloxId: "1350738735",
-      wa: "6287816959979",
-      totalOrders: 15,
-      totalSpent: "Rp 1.937.000",
-    },
-    {
-      id: "2",
-      username: "XDolcx",
-      robloxId: "1719331519",
-      wa: "6287816959979",
-      totalOrders: 2,
-      totalSpent: "Rp 70.000",
-    },
-    {
-      id: "3",
-      username: "Luth_fiyya",
-      robloxId: "4096014482",
-      wa: "62895412735876",
-      totalOrders: 1,
-      totalSpent: "Rp 97.000",
-    },
-    {
-      id: "4",
-      username: "BloxyGamer99",
-      robloxId: "Belum terdata",
-      wa: "Belum terdata",
-      totalOrders: 1,
-      totalSpent: "Rp 45.000",
-    },
-    {
-      id: "5",
-      username: "KawaiiQueen_RBX",
-      robloxId: "Belum terdata",
-      wa: "Belum terdata",
-      totalOrders: 1,
-      totalSpent: "Rp 97.000",
-    },
-    {
-      id: "6",
-      username: "PinkQueen_23",
-      robloxId: "2761899120",
-      wa: "6285718293041",
-      totalOrders: 8,
-      totalSpent: "Rp 1.150.000",
-    },
-    {
-      id: "7",
-      username: "GamerBoy_09",
-      robloxId: "3910284411",
-      wa: "6281298471920",
-      totalOrders: 4,
-      totalSpent: "Rp 520.000",
-    },
-    {
-      id: "8",
-      username: "DragonSlayer_99",
-      robloxId: "1098273411",
-      wa: "6281345678901",
-      totalOrders: 6,
-      totalSpent: "Rp 890.000",
-    },
-  ]);
-
-  const handleRefresh = () => {
-    setIsRefreshing(true);
-    setTimeout(() => {
-      setIsRefreshing(false);
-      onToast("Data pelanggan berhasil diperbarui!", "success");
-    }, 500);
+  const fetchCustomers = async (silent = false) => {
+    try {
+      if (!silent) setLoading(true);
+      const res = await fetch("/api/customers");
+      const json = await res.json();
+      if (json.success && json.data) {
+        const formatted: CustomerItem[] = json.data.map((c: any) => ({
+          id: c.id,
+          username: c.roblox_username,
+          robloxId: c.roblox_id || "Belum terdata",
+          wa: c.phone || "Belum terdata",
+          totalOrders: c.total_orders || 0,
+          totalSpent: `Rp ${Number(c.total_spent || 0).toLocaleString("id-ID")}`,
+          isBlacklisted: c.is_blacklisted,
+        }));
+        setCustomers(formatted);
+      }
+    } catch (err) {
+      console.warn("Failed to fetch customers:", err);
+    } finally {
+      if (!silent) setLoading(false);
+    }
   };
 
-  const handleBlacklistConfirm = () => {
+  React.useEffect(() => {
+    fetchCustomers();
+  }, []);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await fetchCustomers(true);
+    setIsRefreshing(false);
+    onToast("Data pelanggan berhasil diperbarui dari database!", "success");
+  };
+
+  const handleBlacklistConfirm = async () => {
     if (!confirmBlacklistTarget) return;
-    setCustomers((prev) =>
-      prev.filter((c) => c.id !== confirmBlacklistTarget.id)
-    );
-    onToast(
-      `Pelanggan @${confirmBlacklistTarget.username} berhasil dimasukkan ke daftar Blacklist!`,
-      "info"
-    );
-    setConfirmBlacklistTarget(null);
+
+    try {
+      await fetch("/api/blacklist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: confirmBlacklistTarget.username,
+          phone: confirmBlacklistTarget.wa !== "Belum terdata" ? confirmBlacklistTarget.wa : null,
+          reason: "Diblokir secara manual dari daftar pelanggan oleh Admin",
+        }),
+      });
+
+      setCustomers((prev) =>
+        prev.filter((c) => c.id !== confirmBlacklistTarget.id)
+      );
+      onToast(
+        `Pelanggan @${confirmBlacklistTarget.username} berhasil dimasukkan ke daftar Blacklist!`,
+        "info"
+      );
+    } catch {
+      onToast("Gagal memblacklist user", "error");
+    } finally {
+      setConfirmBlacklistTarget(null);
+    }
   };
 
   const filteredCustomers = customers.filter(

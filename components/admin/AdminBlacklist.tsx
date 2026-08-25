@@ -29,27 +29,36 @@ interface AdminBlacklistProps {
 export default function AdminBlacklist({ onToast }: AdminBlacklistProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [blacklist, setBlacklist] = useState<BlacklistItem[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const [blacklist, setBlacklist] = useState<BlacklistItem[]>([
-    {
-      id: "1",
-      username: "Perusuh",
-      robloxId: "Belum terdata",
-      wa: "081234566789",
-      reason: "Indikasi penipuan atau penyalahgunaan",
-      totalOrders: 0,
-      totalSpent: "Rp 0",
-    },
-    {
-      id: "2",
-      username: "FakeBuyer_99",
-      robloxId: "4810293847",
-      wa: "085719283746",
-      reason: "Spam bukti transfer palsu",
-      totalOrders: 0,
-      totalSpent: "Rp 0",
-    },
-  ]);
+  const fetchBlacklist = async (silent = false) => {
+    try {
+      if (!silent) setLoading(true);
+      const res = await fetch("/api/blacklist");
+      const json = await res.json();
+      if (json.success && json.data) {
+        const formatted: BlacklistItem[] = json.data.map((b: any) => ({
+          id: b.id,
+          username: b.roblox_username,
+          robloxId: "Belum terdata",
+          wa: b.phone || "Belum terdata",
+          reason: b.reason || "Indikasi penipuan atau penyalahgunaan",
+          totalOrders: 0,
+          totalSpent: "Rp 0",
+        }));
+        setBlacklist(formatted);
+      }
+    } catch (err) {
+      console.warn("Failed to fetch blacklist:", err);
+    } finally {
+      if (!silent) setLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
+    fetchBlacklist();
+  }, []);
 
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -65,15 +74,14 @@ export default function AdminBlacklist({ onToast }: AdminBlacklistProps) {
     null
   );
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setIsRefreshing(true);
-    setTimeout(() => {
-      setIsRefreshing(false);
-      onToast("Data daftar blacklist berhasil diperbarui!", "success");
-    }, 500);
+    await fetchBlacklist(true);
+    setIsRefreshing(false);
+    onToast("Data daftar blacklist berhasil diperbarui dari database!", "success");
   };
 
-  const handleAddBlacklist = (e: React.FormEvent) => {
+  const handleAddBlacklist = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formUsername.trim()) {
       onToast("Mohon masukkan username Roblox!", "error");
@@ -82,18 +90,28 @@ export default function AdminBlacklist({ onToast }: AdminBlacklistProps) {
 
     const cleanUsername = formUsername.trim().replace(/^@/, "");
 
-    const newItem: BlacklistItem = {
-      id: Date.now().toString(),
-      username: cleanUsername,
-      robloxId: formRobloxId.trim() || "Belum terdata",
-      wa: formWa.trim() || "Belum terdata",
-      reason: formReason.trim() || "Indikasi penipuan atau penyalahgunaan",
-      totalOrders: 0,
-      totalSpent: "Rp 0",
-    };
+    try {
+      const res = await fetch("/api/blacklist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: cleanUsername,
+          phone: formWa.trim() || null,
+          reason: formReason.trim() || "Indikasi penipuan atau penyalahgunaan",
+        }),
+      });
 
-    setBlacklist((prev) => [newItem, ...prev]);
-    onToast(`Akun @${cleanUsername} berhasil diblokir!`, "success");
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || "Gagal memblokir user");
+      }
+
+      await fetchBlacklist();
+      onToast(`Akun @${cleanUsername} berhasil diblokir ke database!`, "success");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Gagal menambahkan blacklist";
+      onToast(msg, "error");
+    }
 
     // Reset & close
     setFormUsername("");
@@ -103,14 +121,24 @@ export default function AdminBlacklist({ onToast }: AdminBlacklistProps) {
     setIsModalOpen(false);
   };
 
-  const handleUnblockConfirm = () => {
+  const handleUnblockConfirm = async () => {
     if (!unblockingItem) return;
-    setBlacklist((prev) => prev.filter((b) => b.id !== unblockingItem.id));
-    onToast(
-      `Blokir akun @${unblockingItem.username} berhasil dibuka!`,
-      "success"
-    );
-    setUnblockingItem(null);
+
+    try {
+      await fetch(`/api/blacklist?id=${unblockingItem.id}&username=${unblockingItem.username}`, {
+        method: "DELETE",
+      });
+
+      setBlacklist((prev) => prev.filter((b) => b.id !== unblockingItem.id));
+      onToast(
+        `Blokir akun @${unblockingItem.username} berhasil dibuka!`,
+        "success"
+      );
+    } catch {
+      onToast("Gagal membuka blokir", "error");
+    } finally {
+      setUnblockingItem(null);
+    }
   };
 
   const filteredBlacklist = blacklist.filter(

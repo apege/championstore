@@ -48,28 +48,57 @@ export default function AdminModals({
   if (!activeModal) return null;
 
   const handleActivateId = () => {
-    setIsActivating(true);
-    setTimeout(() => {
-      setIsActivating(false);
-      onClose();
-      onToast("ID Roblox berhasil diaktifkan! Order siap diproses.", "success");
-    }, 1500);
-  };
-
-  const handleSaveNote = () => {
-    setAdminNote(tempNote);
     onClose();
-    onToast("Catatan admin berhasil diperbarui!", "success");
+    onToast(`ID Roblox @${targetUsername} berhasil diaktifkan di sistem!`, "success");
   };
 
-  const handleCreateProduct = (e: React.FormEvent) => {
+  const handleSaveNote = async () => {
+    setAdminNote(tempNote);
+    try {
+      await fetch("/api/store", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ adminNote: tempNote }),
+      });
+      onToast("Catatan admin berhasil disimpan ke database!", "success");
+    } catch {
+      onToast("Catatan diperbarui di tampilan lokal", "info");
+    }
+    onClose();
+  };
+
+  const handleCreateProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newRobux || !newPrice) {
       onToast("Mohon lengkapi nominal dan harga!", "error");
       return;
     }
+
+    const robuxNum = parseInt(newRobux.replace(/[^0-9]/g, ""), 10) || 0;
+    const priceNum = parseInt(newPrice.replace(/[^0-9]/g, ""), 10) || 0;
+
+    try {
+      const res = await fetch("/api/products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount: robuxNum,
+          price: priceNum,
+          category: robuxNum >= 5000 ? "sultan" : robuxNum === 2200 ? "promo" : "popular",
+          stock: parseInt(newStock, 10) || 999,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Gagal menambah produk");
+      }
+      onToast(`Produk ${robuxNum.toLocaleString("id-ID")} Robux berhasil disimpan ke database!`, "success");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Gagal menambah produk";
+      onToast(msg, "error");
+    }
+
     onClose();
-    onToast(`Produk ${newRobux} Robux berhasil ditambahkan!`, "success");
   };
 
   return (

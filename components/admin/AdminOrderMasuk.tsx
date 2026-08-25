@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
+import { supabase } from "@/lib/supabase/client";
 import {
   RefreshCw,
   Search,
@@ -14,10 +15,14 @@ import {
   ExternalLink,
   Check,
   MessageCircle,
+  MessageSquare,
   Clock,
   CheckCircle2,
   XCircle,
   Zap,
+  Eye,
+  Download,
+  X,
 } from "lucide-react";
 
 export type OrderStatus =
@@ -25,6 +30,24 @@ export type OrderStatus =
   | "Diproses"
   | "Selesai"
   | "Dibatalkan";
+
+const DB_TO_UI_STATUS: Record<string, OrderStatus> = {
+  pending: "Menunggu Bayar",
+  processing: "Diproses",
+  completed: "Selesai",
+  cancelled: "Dibatalkan",
+  "Menunggu Bayar": "Menunggu Bayar",
+  Diproses: "Diproses",
+  Selesai: "Selesai",
+  Dibatalkan: "Dibatalkan",
+};
+
+const UI_TO_DB_STATUS: Record<string, string> = {
+  "Menunggu Bayar": "pending",
+  Diproses: "processing",
+  Selesai: "completed",
+  Dibatalkan: "cancelled",
+};
 
 export interface OrderItem {
   id: string;
@@ -38,6 +61,7 @@ export interface OrderItem {
   fullDate: string;
   source: "WEBSITE" | "WHATSAPP";
   hasProof: boolean;
+  paymentProofUrl?: string | null;
   notes: string;
   customerNote: string;
 }
@@ -60,227 +84,87 @@ export default function AdminOrderMasuk({
   const [searchTerm, setSearchTerm] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  // Complete orders database
-  const [orders, setOrders] = useState<OrderItem[]>([
-    // Menunggu Bayar (Order Masuk)
-    {
-      id: "BLX13576381",
-      user: "hssuen2",
-      userIdRoblox: "4805117766",
-      phone: "+62882007441347",
-      item: "1.800 Robux",
-      price: "Rp 35.000",
-      status: "Menunggu Bayar",
-      time: "23 Agu, 20.52",
-      fullDate: "23 Agustus 2026 pukul 20.52 WIB",
-      source: "WEBSITE",
-      hasProof: false,
-      notes: "",
-      customerNote: "-",
-    },
-    {
-      id: "BLX99023318",
-      user: "hssuen2",
-      userIdRoblox: "4805117766",
-      phone: "+62882007441347",
-      item: "1.800 Robux",
-      price: "Rp 35.000",
-      status: "Menunggu Bayar",
-      time: "23 Agu, 20.49",
-      fullDate: "23 Agustus 2026 pukul 20.49 WIB",
-      source: "WHATSAPP",
-      hasProof: false,
-      notes: "",
-      customerNote: "-",
-    },
-    {
-      id: "BLX98855577",
-      user: "hssuen2",
-      userIdRoblox: "4805117766",
-      phone: "+62882007441347",
-      item: "1.800 Robux",
-      price: "Rp 35.000",
-      status: "Menunggu Bayar",
-      time: "23 Agu, 20.49",
-      fullDate: "23 Agustus 2026 pukul 20.49 WIB",
-      source: "WHATSAPP",
-      hasProof: false,
-      notes: "",
-      customerNote: "-",
-    },
-    {
-      id: "BLX98725615",
-      user: "hssuen2",
-      userIdRoblox: "4805117766",
-      phone: "+62882007441347",
-      item: "1.800 Robux",
-      price: "Rp 35.000",
-      status: "Menunggu Bayar",
-      time: "23 Agu, 20.49",
-      fullDate: "23 Agustus 2026 pukul 20.49 WIB",
-      source: "WHATSAPP",
-      hasProof: false,
-      notes: "",
-      customerNote: "-",
-    },
-    {
-      id: "BLX05598073",
-      user: "bbycii_12",
-      userIdRoblox: "3910284411",
-      phone: "+6281298471920",
-      item: "1.800 Robux",
-      price: "Rp 35.000",
-      status: "Menunggu Bayar",
-      time: "23 Agu, 18.20",
-      fullDate: "23 Agustus 2026 pukul 18.20 WIB",
-      source: "WHATSAPP",
-      hasProof: false,
-      notes: "",
-      customerNote: "-",
-    },
-    {
-      id: "BLX05412998",
-      user: "PinkQueen_23",
-      userIdRoblox: "2761899120",
-      phone: "+6285718293041",
-      item: "2.200 Robux",
-      price: "Rp 275.000",
-      status: "Menunggu Bayar",
-      time: "23 Agu, 17.05",
-      fullDate: "23 Agustus 2026 pukul 17.05 WIB",
-      source: "WEBSITE",
-      hasProof: true,
-      notes: "",
-      customerNote: "Tolong kirim cepat ya min",
-    },
+  // Orders state
+  const [orders, setOrders] = useState<OrderItem[]>([]);
 
-    // Diproses (Order Diproses)
-    {
-      id: "BLX98711029",
-      user: "DragonSlayer_99",
-      userIdRoblox: "1098273411",
-      phone: "+6281345678901",
-      item: "5.600 Robux",
-      price: "Rp 695.000",
-      status: "Diproses",
-      time: "23 Agu, 19.30",
-      fullDate: "23 Agustus 2026 pukul 19.30 WIB",
-      source: "WEBSITE",
-      hasProof: true,
-      notes: "Sedang proses kirim via group payout",
-      customerNote: "Sudah join group min",
-    },
-    {
-      id: "BLX98654122",
-      user: "RobloxKing_01",
-      userIdRoblox: "9812736450",
-      phone: "+6285219827364",
-      item: "3.200 Robux",
-      price: "Rp 395.000",
-      status: "Diproses",
-      time: "23 Agu, 19.15",
-      fullDate: "23 Agustus 2026 pukul 19.15 WIB",
-      source: "WHATSAPP",
-      hasProof: true,
-      notes: "Proses verifikasi gamepass",
-      customerNote: "-",
-    },
-    {
-      id: "BLX98501938",
-      user: "NinjaGamer_X",
-      userIdRoblox: "3847192847",
-      phone: "+6287819283746",
-      item: "1.700 Robux",
-      price: "Rp 215.000",
-      status: "Diproses",
-      time: "23 Agu, 18.50",
-      fullDate: "23 Agustus 2026 pukul 18.50 WIB",
-      source: "WEBSITE",
-      hasProof: true,
-      notes: "",
-      customerNote: "-",
-    },
+  // Fetch orders from Supabase backend
+  const fetchOrders = async (silent = false) => {
+    try {
+      if (!silent) setLoading(true);
+      const res = await fetch("/api/orders");
+      const json = await res.json();
+      if (json.success && json.data) {
+        // Map Supabase rows to OrderItem format
+        const formatted: OrderItem[] = json.data.map((row: any) => {
+          const createdAt = new Date(row.created_at || Date.now());
+          const dateStr = createdAt.toLocaleDateString("id-ID", {
+            day: "numeric",
+            month: "short",
+          });
+          const timeStr = createdAt.toLocaleTimeString("id-ID", {
+            hour: "2-digit",
+            minute: "2-digit",
+          });
 
-    // Selesai (Order Selesai)
-    {
-      id: "BLX98401928",
-      user: "gaming_pro21",
-      userIdRoblox: "4719283746",
-      phone: "+6281987654321",
-      item: "1.700 Robux",
-      price: "Rp 215.000",
-      status: "Selesai",
-      time: "23 Agu, 17.40",
-      fullDate: "23 Agustus 2026 pukul 17.40 WIB",
-      source: "WEBSITE",
-      hasProof: true,
-      notes: "Transaksi sukses 100%",
-      customerNote: "-",
-    },
-    {
-      id: "BLX98319201",
-      user: "RbxMaster_ID",
-      userIdRoblox: "2837461928",
-      phone: "+6282198736451",
-      item: "1.200 Robux",
-      price: "Rp 155.000",
-      status: "Selesai",
-      time: "23 Agu, 16.20",
-      fullDate: "23 Agustus 2026 pukul 16.20 WIB",
-      source: "WHATSAPP",
-      hasProof: true,
-      notes: "Bukti transfer valid",
-      customerNote: "-",
-    },
-    {
-      id: "BLX98218739",
-      user: "SuperNoob_99",
-      userIdRoblox: "9384719283",
-      phone: "+6281234567899",
-      item: "800 Robux",
-      price: "Rp 105.000",
-      status: "Selesai",
-      time: "23 Agu, 15.10",
-      fullDate: "23 Agustus 2026 pukul 15.10 WIB",
-      source: "WEBSITE",
-      hasProof: true,
-      notes: "",
-      customerNote: "-",
-    },
+          let itemName = `${Number(row.total_robux || 0).toLocaleString("id-ID")} Robux`;
+          if (row.items && Array.isArray(row.items) && row.items.length > 0) {
+            itemName = row.items.map((i: any) => i.name || `${i.amount} Robux`).join(", ");
+          }
 
-    // Dibatalkan (Order Dibatalkan)
-    {
-      id: "BLX98109283",
-      user: "GhostRider_ID",
-      userIdRoblox: "8273645192",
-      phone: "+6285619283746",
-      item: "2.200 Robux",
-      price: "Rp 275.000",
-      status: "Dibatalkan",
-      time: "23 Agu, 14.00",
-      fullDate: "23 Agustus 2026 pukul 14.00 WIB",
-      source: "WEBSITE",
-      hasProof: false,
-      notes: "Pembayaran expired melebihi 24 jam",
-      customerNote: "-",
-    },
-    {
-      id: "BLX98018274",
-      user: "ShadowHunter",
-      userIdRoblox: "1928374650",
-      phone: "+6289918273645",
-      item: "5.600 Robux",
-      price: "Rp 695.000",
-      status: "Dibatalkan",
-      time: "23 Agu, 12.30",
-      fullDate: "23 Agustus 2026 pukul 12.30 WIB",
-      source: "WHATSAPP",
-      hasProof: false,
-      notes: "ID Roblox salah / tidak ditemukan",
-      customerNote: "-",
-    },
-  ]);
+          const rawStatus = row.status || row.order_status || "pending";
+          const uiStatus = DB_TO_UI_STATUS[rawStatus] || "Menunggu Bayar";
+
+          return {
+            id: row.order_code || row.id,
+            user: row.customer_username || row.roblox_username || "-",
+            userIdRoblox: row.roblox_user_id || row.customer_roblox_id || "-",
+            phone: row.customer_phone || "-",
+            item: itemName,
+            price: `Rp ${Number(row.total_price || row.price || 0).toLocaleString("id-ID")}`,
+            status: uiStatus,
+            time: `${dateStr}, ${timeStr}`,
+            fullDate: createdAt.toLocaleString("id-ID"),
+            source: row.source || (row.payment_method === "WhatsApp" ? "WHATSAPP" : "WEBSITE"),
+            hasProof: Boolean(row.payment_proof_url || row.payment_proof_path),
+            paymentProofUrl: row.payment_proof_url || row.payment_proof_path,
+            notes: row.admin_notes || "",
+            customerNote: row.customer_notes || row.customer_note || "-",
+          };
+        });
+        setOrders(formatted);
+      }
+    } catch (err) {
+      console.warn("Failed to fetch orders:", err);
+    } finally {
+      if (!silent) setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchOrders();
+
+    const channel = supabase
+      .channel("admin-orders-table-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "orders" },
+        () => {
+          fetchOrders(true);
+        }
+      )
+      .subscribe();
+
+    const interval = setInterval(() => {
+      fetchOrders(true);
+    }, 3000);
+
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(interval);
+    };
+  }, []);
 
   const [activeDetailOrder, setActiveDetailOrder] = useState<OrderItem | null>(
     selectedOrderId
@@ -288,7 +172,8 @@ export default function AdminOrderMasuk({
       : null
   );
 
-  const [currentAdminNote, setCurrentAdminNote] = useState<string>("");
+  const [currentAdminNote, setCurrentAdminNote] = useState<string>("" );
+  const [isProofModalOpen, setIsProofModalOpen] = useState(false);
 
   // Tab Header configurations
   const tabConfig = {
@@ -316,12 +201,11 @@ export default function AdminOrderMasuk({
 
   const currentTab = tabConfig[tabType] || tabConfig["order-masuk"];
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setIsRefreshing(true);
-    setTimeout(() => {
-      setIsRefreshing(false);
-      onToast(`Data ${currentTab.title} berhasil diperbarui!`, "success");
-    }, 600);
+    await fetchOrders(true);
+    setIsRefreshing(false);
+    onToast(`Data ${currentTab.title} berhasil disinkronkan dengan database!`, "success");
   };
 
   const handleCopy = (text: string, fieldName: string) => {
@@ -331,7 +215,7 @@ export default function AdminOrderMasuk({
     setTimeout(() => setCopiedField(null), 2000);
   };
 
-  const handleUpdateStatus = (
+  const handleUpdateStatus = async (
     orderId: string,
     newStatus: OrderItem["status"]
   ) => {
@@ -345,14 +229,39 @@ export default function AdminOrderMasuk({
         prev ? { ...prev, status: newStatus } : null
       );
     }
-    onToast(`Status order #${orderId} diubah menjadi "${newStatus}"`, "success");
+
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("champion-orders-updated"));
+    }
+
+    try {
+      const dbStatus = UI_TO_DB_STATUS[newStatus] || newStatus;
+      const res = await fetch("/api/orders", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: orderId, status: dbStatus }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Gagal update status");
+      }
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("champion-orders-updated"));
+      }
+      onToast(`Status order #${orderId} diubah menjadi "${newStatus}"`, "success");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Gagal memperbarui status order";
+      onToast(msg, "error");
+    }
   };
 
-  const handleSaveNote = () => {
+  const handleSaveNote = async () => {
     if (!activeDetailOrder) return;
+    const orderId = activeDetailOrder.id;
+
     setOrders((prev) =>
       prev.map((ord) =>
-        ord.id === activeDetailOrder.id
+        ord.id === orderId
           ? { ...ord, notes: currentAdminNote }
           : ord
       )
@@ -360,7 +269,52 @@ export default function AdminOrderMasuk({
     setActiveDetailOrder((prev) =>
       prev ? { ...prev, notes: currentAdminNote } : null
     );
-    onToast("Catatan order berhasil disimpan!", "success");
+
+    try {
+      const res = await fetch("/api/orders", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: orderId, adminNotes: currentAdminNote }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Gagal menyimpan catatan");
+      }
+      onToast("Catatan order berhasil disimpan ke database!", "success");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Gagal menyimpan catatan";
+      onToast(msg, "error");
+    }
+  };
+
+  const handleSendReviewLink = (ord: OrderItem) => {
+    const origin =
+      typeof window !== "undefined"
+        ? window.location.origin
+        : "https://championstore.id";
+    const cleanRobux = ord.item.replace(/[^0-9.]/g, "");
+    const reviewLink = `${origin}/review?order=${ord.id}&user=${encodeURIComponent(ord.user)}&robux=${encodeURIComponent(cleanRobux)}`;
+
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(reviewLink);
+    }
+
+    const cleanPhone = ord.phone.replace(/[^0-9]/g, "");
+    const waText = encodeURIComponent(
+      `Halo kak @${ord.user}!\n\n` +
+        `Pesanan Robux #${ord.id} (${ord.item}) telah selesai kami kirim.\n\n` +
+        `Mohon luangkan waktu sebentar untuk memberikan ulasan / testimoni melalui link berikut ya:\n` +
+        `${reviewLink}\n\n` +
+        `Terima kasih banyak sudah berbelanja di ChampionStore!`
+    );
+
+    if (cleanPhone) {
+      window.open(`https://wa.me/${cleanPhone}?text=${waText}`, "_blank");
+    }
+    onToast(
+      `Link review #${ord.id} disalin ke clipboard & WhatsApp dibuka!`,
+      "success"
+    );
   };
 
   // Filter orders by tab category and search term
@@ -474,6 +428,16 @@ export default function AdminOrderMasuk({
               Batalkan
             </button>
 
+            {activeDetailOrder.status === "Selesai" && (
+              <button
+                onClick={() => handleSendReviewLink(activeDetailOrder)}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-950/30 hover:bg-amber-900/50 border border-amber-500/60 text-amber-400 hover:text-amber-300 text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-[0_0_12px_rgba(245,158,11,0.2)]"
+              >
+                <MessageSquare className="w-3.5 h-3.5 text-amber-400" />
+                <span>Kirim Link Review</span>
+              </button>
+            )}
+
             <a
               href={`https://wa.me/${activeDetailOrder.phone.replace(
                 /[^0-9]/g,
@@ -542,18 +506,21 @@ export default function AdminOrderMasuk({
               </span>
             </div>
 
-            {/* Bukti Transfer Box */}
-            <div className="p-3.5 rounded-2xl bg-slate-900/60 border border-slate-800 text-center text-xs text-slate-400">
-              {activeDetailOrder.hasProof ? (
-                <span className="text-emerald-400 font-semibold">
-                  ✓ Bukti transfer telah diunggah oleh pelanggan.
-                </span>
-              ) : (
-                <span>
-                  Foto bukti transfer telah dibersihkan oleh sistem retensi atau tidak diunggah.
-                </span>
-              )}
-            </div>
+            {/* Button: Lihat Bukti Transfer Pelanggan (BloxyLucy Style) */}
+            {activeDetailOrder.hasProof || activeDetailOrder.paymentProofUrl ? (
+              <button
+                type="button"
+                onClick={() => setIsProofModalOpen(true)}
+                className="w-full py-3 px-4 rounded-2xl bg-red-950/20 hover:bg-red-950/40 border border-red-800/40 hover:border-red-600/60 text-[#FF1F3D] hover:text-red-400 text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.99] cursor-pointer shadow-sm"
+              >
+                <Eye className="w-4 h-4" />
+                <span>Lihat Bukti Transfer Pelanggan</span>
+              </button>
+            ) : (
+              <div className="p-3.5 rounded-2xl bg-slate-900/60 border border-slate-800 text-xs text-slate-500 text-center">
+                Metode pembayaran WhatsApp / bukti belum diunggah.
+              </div>
+            )}
           </div>
         </div>
 
@@ -662,6 +629,70 @@ export default function AdminOrderMasuk({
             </button>
           </div>
         </div>
+
+        {/* ======================================================== */}
+        {/* MODAL: BUKTI TRANSFER PELANGGAN (BloxyLucy Style) */}
+        {/* ======================================================== */}
+        {isProofModalOpen && activeDetailOrder && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+            <div
+              onClick={() => setIsProofModalOpen(false)}
+              className="fixed inset-0 bg-black/80 backdrop-blur-sm transition-opacity"
+            />
+
+            <div className="relative w-full max-w-lg rounded-3xl bg-[#0D121F] border border-slate-800 shadow-2xl p-5 sm:p-6 space-y-4 z-10 animate-in zoom-in-95 duration-150">
+              {/* Header */}
+              <div className="flex items-center justify-between pb-3 border-b border-slate-800/80">
+                <h3 className="font-extrabold text-base sm:text-lg text-white tracking-tight">
+                  Bukti Transfer Pelanggan
+                </h3>
+                <button
+                  onClick={() => setIsProofModalOpen(false)}
+                  className="p-1.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Proof Image Box */}
+              <div className="relative w-full h-72 sm:h-80 rounded-2xl bg-[#080C14] border border-slate-800 overflow-hidden flex items-center justify-center p-3">
+                <img
+                  src={activeDetailOrder.paymentProofUrl || "/logo.png"}
+                  alt="Bukti Transfer Pelanggan"
+                  className="max-h-full max-w-full object-contain rounded-xl shadow-lg"
+                />
+              </div>
+
+              {/* Footer */}
+              <div className="flex items-center justify-between gap-3 pt-2">
+                <div className="text-xs font-bold text-slate-400">
+                  #{activeDetailOrder.id} • @{activeDetailOrder.user}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsProofModalOpen(false)}
+                    className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs font-bold text-slate-300 hover:text-white transition-colors cursor-pointer"
+                  >
+                    Tutup
+                  </button>
+
+                  <a
+                    href={activeDetailOrder.paymentProofUrl || "/logo.png"}
+                    download={`bukti-transfer-${activeDetailOrder.id}.png`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl bg-gradient-to-r from-red-600 to-[#FF1F3D] hover:from-red-500 hover:to-red-600 text-white text-xs font-extrabold shadow-[0_0_12px_rgba(255,31,61,0.5)] active:scale-95 transition-all cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Download</span>
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -798,6 +829,17 @@ export default function AdminOrderMasuk({
                         className="px-3.5 py-1.5 rounded-xl bg-emerald-950/40 hover:bg-emerald-900/60 border border-emerald-600/50 text-emerald-400 hover:text-emerald-300 text-xs font-bold transition-all active:scale-95 cursor-pointer"
                       >
                         Selesai
+                      </button>
+                    )}
+
+                    {ord.status === "Selesai" && (
+                      <button
+                        onClick={() => handleSendReviewLink(ord)}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-amber-950/20 hover:bg-amber-950/40 border border-amber-500/50 hover:border-amber-400 text-amber-400 hover:text-amber-300 text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-[0_0_10px_rgba(245,158,11,0.15)]"
+                        title="Kirim Link Review Testimoni ke Pelanggan"
+                      >
+                        <MessageSquare className="w-3.5 h-3.5 text-amber-400" />
+                        <span>Link Review</span>
                       </button>
                     )}
 

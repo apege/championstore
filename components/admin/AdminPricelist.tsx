@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import {
   Plus,
@@ -10,12 +10,15 @@ import {
   Check,
   Zap,
   Crown,
+  Flame,
 } from "lucide-react";
 
 export interface PricelistItem {
   id: string;
+  amount: number;
   robux: string;
   price: string;
+  priceNum: number;
   badge?: "PROMO" | "SULTAN" | "POPULER" | null;
   isActive: boolean;
 }
@@ -25,71 +28,109 @@ interface AdminPricelistProps {
 }
 
 export default function AdminPricelist({ onToast }: AdminPricelistProps) {
-  const [items, setItems] = useState<PricelistItem[]>([
-    {
-      id: "1",
-      robux: "1.800 Robux",
-      price: "Rp 35.000",
-      badge: null,
-      isActive: true,
-    },
-    {
-      id: "2",
-      robux: "2.200 Robux",
-      price: "Rp 45.000",
-      badge: "PROMO",
-      isActive: true,
-    },
-    {
-      id: "3",
-      robux: "2.700 Robux",
-      price: "Rp 50.000",
-      badge: null,
-      isActive: true,
-    },
-    {
-      id: "4",
-      robux: "3.200 Robux",
-      price: "Rp 60.000",
-      badge: null,
-      isActive: true,
-    },
-    {
-      id: "5",
-      robux: "3.700 Robux",
-      price: "Rp 70.000",
-      badge: null,
-      isActive: true,
-    },
-    {
-      id: "6",
-      robux: "4.200 Robux",
-      price: "Rp 80.000",
-      badge: null,
-      isActive: true,
-    },
-    {
-      id: "7",
-      robux: "4.700 Robux",
-      price: "Rp 90.000",
-      badge: null,
-      isActive: true,
-    },
-    {
-      id: "8",
-      robux: "5.500 Robux",
-      price: "Rp 100.000",
-      badge: null,
-      isActive: true,
-    },
-    {
-      id: "9",
-      robux: "10.500 Robux",
-      price: "Rp 200.000",
-      badge: "SULTAN",
-      isActive: true,
-    },
-  ]);
+  const [items, setItems] = useState<PricelistItem[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  // Fetch products, store settings (for promo), and orders (for most popular)
+  const fetchProducts = async () => {
+    try {
+      setLoading(true);
+
+      // 1. Fetch products
+      const res = await fetch("/api/products");
+      const json = await res.json();
+      const rawProducts: any[] = json.success && json.data ? json.data : [];
+
+      // 2. Fetch promo config from store settings
+      let promoRobuxAmount = 2200;
+      let isPromoActive = true;
+      try {
+        const storeRes = await fetch("/api/store");
+        const storeJson = await storeRes.json();
+        if (storeJson.success && storeJson.data) {
+          promoRobuxAmount = Number(storeJson.data.promoRobuxAmount) || 2200;
+          isPromoActive = storeJson.data.promoActive !== false;
+        }
+      } catch (err) {
+        console.warn("Could not fetch store promo settings:", err);
+      }
+
+      // 3. Fetch orders to calculate most popular (most ordered) package
+      let mostOrderedAmount = 800; // default popular
+      try {
+        const ordersRes = await fetch("/api/orders");
+        const ordersJson = await ordersRes.json();
+        if (ordersJson.success && Array.isArray(ordersJson.data) && ordersJson.data.length > 0) {
+          const countMap: Record<number, number> = {};
+          ordersJson.data.forEach((o: any) => {
+            const amt = Number(o.total_robux) || 0;
+            if (amt > 0) {
+              countMap[amt] = (countMap[amt] || 0) + 1;
+            }
+          });
+          let maxCount = 0;
+          Object.entries(countMap).forEach(([amtStr, count]) => {
+            const amt = Number(amtStr);
+            // Ignore if it's already a sultan (> 10000) or promo package
+            if (count > maxCount && amt < 10000 && amt !== promoRobuxAmount) {
+              maxCount = count;
+              mostOrderedAmount = amt;
+            }
+          });
+        }
+      } catch (err) {
+        console.warn("Could not calculate popular orders:", err);
+      }
+
+      // 4. Map badges accurately according to the 3 rules:
+      // - Sultan: amount >= 10.000 Robux
+      // - Promo: amount matches store settings promo
+      // - Populer: highest order count
+      const formatted: PricelistItem[] = rawProducts.map((p: any) => {
+        const amt = Number(p.amount) || 0;
+        let badge: "PROMO" | "SULTAN" | "POPULER" | null = null;
+
+        if (amt >= 10000) {
+          badge = "SULTAN";
+        } else if (isPromoActive && amt === promoRobuxAmount) {
+          badge = "PROMO";
+        } else if (amt === mostOrderedAmount || p.isBestSeller) {
+          badge = "POPULER";
+        }
+
+        return {
+          id: p.id,
+          amount: amt,
+          robux: `${amt.toLocaleString("id-ID")} Robux`,
+          price: `Rp ${Number(p.price).toLocaleString("id-ID")}`,
+          priceNum: Number(p.price) || 0,
+          badge,
+          isActive: p.isActive !== undefined ? p.isActive : true,
+        };
+      });
+
+      // If no popular badge was assigned yet, assign to the lowest entry package (e.g. 800 Robux)
+      const hasPopular = formatted.some((it) => it.badge === "POPULER");
+      if (!hasPopular && formatted.length > 0) {
+        const nonPromoNonSultan = formatted.find(
+          (it) => it.badge !== "PROMO" && it.badge !== "SULTAN"
+        );
+        if (nonPromoNonSultan) {
+          nonPromoNonSultan.badge = "POPULER";
+        }
+      }
+
+      setItems(formatted);
+    } catch (err) {
+      console.warn("Failed to fetch products:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProducts();
+  }, []);
 
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -103,14 +144,6 @@ export default function AdminPricelist({ onToast }: AdminPricelistProps) {
   // Delete modal state
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  // Auto-detect badge based on nominal/price rules
-  const getAutoBadge = (robuxStr: string, priceStr: string): "PROMO" | "SULTAN" | null => {
-    const rNum = parseInt(robuxStr.replace(/[^0-9]/g, ""), 10) || 0;
-    if (rNum >= 10000) return "SULTAN";
-    if (rNum === 2200) return "PROMO";
-    return null;
-  };
-
   const openAddModal = () => {
     setEditingItem(null);
     setFormRobux("");
@@ -121,80 +154,93 @@ export default function AdminPricelist({ onToast }: AdminPricelistProps) {
 
   const openEditModal = (item: PricelistItem) => {
     setEditingItem(item);
-    setFormRobux(item.robux.replace(/[^0-9.]/g, ""));
-    setFormPrice(item.price.replace(/[^0-9.]/g, ""));
+    setFormRobux(item.robux.replace(/[^0-9]/g, ""));
+    setFormPrice(item.price.replace(/[^0-9]/g, ""));
     setFormIsActive(item.isActive);
     setIsModalOpen(true);
   };
 
-  const handleToggleActive = (id: string) => {
+  const handleToggleActive = async (id: string) => {
+    const target = items.find((it) => it.id === id);
+    if (!target) return;
+    const newStatus = !target.isActive;
+
     setItems((prev) =>
-      prev.map((it) => {
-        if (it.id === id) {
-          const newStatus = !it.isActive;
-          onToast(
-            `Nominal ${it.robux} ${newStatus ? "diaktifkan" : "dinonaktifkan"}!`,
-            newStatus ? "success" : "info"
-          );
-          return { ...it, isActive: newStatus };
-        }
-        return it;
-      })
+      prev.map((it) => (it.id === id ? { ...it, isActive: newStatus } : it))
     );
+
+    const robuxNum = target.amount;
+    const priceNum = target.priceNum;
+
+    try {
+      await fetch("/api/products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount: robuxNum,
+          price: priceNum,
+          isActive: newStatus,
+        }),
+      });
+      onToast(
+        `Nominal ${target.robux} ${newStatus ? "diaktifkan" : "dinonaktifkan"}!`,
+        newStatus ? "success" : "info"
+      );
+    } catch {
+      onToast("Gagal memperbarui status produk", "error");
+    }
   };
 
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = async () => {
     if (!deletingId) return;
     const target = items.find((i) => i.id === deletingId);
     setItems((prev) => prev.filter((i) => i.id !== deletingId));
-    setDeletingId(null);
-    onToast(`Nominal ${target?.robux || ""} berhasil dihapus!`, "success");
+
+    try {
+      await fetch(`/api/products?id=${deletingId}`, {
+        method: "DELETE",
+      });
+      onToast(`Nominal ${target?.robux || ""} berhasil dihapus!`, "success");
+    } catch {
+      onToast("Gagal menghapus produk dari database", "error");
+    } finally {
+      setDeletingId(null);
+    }
   };
 
-  const handleSaveForm = (e: React.FormEvent) => {
+  const handleSaveForm = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formRobux.trim() || !formPrice.trim()) {
       onToast("Mohon lengkapi nominal Robux dan harga jual!", "error");
       return;
     }
 
-    const formattedRobux = formRobux.includes("Robux")
-      ? formRobux
-      : `${formRobux.trim()} Robux`;
+    const robuxNum = parseInt(formRobux.replace(/[^0-9]/g, ""), 10) || 0;
+    const priceNum = parseInt(formPrice.replace(/[^0-9]/g, ""), 10) || 0;
 
-    const formattedPrice = formPrice.startsWith("Rp")
-      ? formPrice
-      : `Rp ${formPrice.trim()}`;
+    const formattedRobux = `${robuxNum.toLocaleString("id-ID")} Robux`;
 
-    const autoBadge = getAutoBadge(formattedRobux, formattedPrice);
+    try {
+      const res = await fetch("/api/products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount: robuxNum,
+          price: priceNum,
+          isActive: formIsActive,
+        }),
+      });
 
-    if (editingItem) {
-      // Edit existing
-      setItems((prev) =>
-        prev.map((it) =>
-          it.id === editingItem.id
-            ? {
-                ...it,
-                robux: formattedRobux,
-                price: formattedPrice,
-                badge: autoBadge,
-                isActive: formIsActive,
-              }
-            : it
-        )
-      );
-      onToast(`Nominal ${formattedRobux} berhasil diperbarui!`, "success");
-    } else {
-      // Add new
-      const newItem: PricelistItem = {
-        id: Date.now().toString(),
-        robux: formattedRobux,
-        price: formattedPrice,
-        badge: autoBadge,
-        isActive: formIsActive,
-      };
-      setItems((prev) => [...prev, newItem]);
-      onToast(`Nominal ${formattedRobux} berhasil ditambahkan!`, "success");
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || "Gagal menyimpan paket");
+      }
+
+      await fetchProducts();
+      onToast(`Nominal ${formattedRobux} berhasil disimpan ke database!`, "success");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Gagal menyimpan produk";
+      onToast(msg, "error");
     }
 
     setIsModalOpen(false);
@@ -257,16 +303,24 @@ export default function AdminPricelist({ onToast }: AdminPricelistProps) {
                     </h3>
                   </div>
 
-                  {/* Auto Badges (Promo / Sultan) */}
+                  {/* Dynamic Badges: POPULER / PROMO / SULTAN */}
+                  {item.badge === "POPULER" && (
+                    <div className="inline-flex items-center gap-1 px-2 py-0.5 mt-0.5 rounded-md bg-gradient-to-r from-orange-600 via-amber-500 to-yellow-500 text-white text-[9px] font-black tracking-wider uppercase shadow-[0_0_8px_rgba(249,115,22,0.6)]">
+                      <Flame className="w-2.5 h-2.5 fill-white text-white" />
+                      <span>POPULER</span>
+                    </div>
+                  )}
+
                   {item.badge === "PROMO" && (
-                    <div className="inline-flex items-center gap-1 px-2 py-0.5 mt-0.5 rounded-md bg-gradient-to-r from-red-600 to-pink-600 text-white text-[9px] font-black tracking-wider uppercase shadow-[0_0_8px_rgba(239,68,68,0.6)]">
-                      <Zap className="w-2.5 h-2.5 fill-white" />
+                    <div className="inline-flex items-center gap-1 px-2 py-0.5 mt-0.5 rounded-md bg-gradient-to-r from-red-600 via-[#FF1F3D] to-red-600 text-white text-[9px] font-black tracking-wider uppercase shadow-[0_0_8px_rgba(255,31,61,0.6)]">
+                      <Zap className="w-2.5 h-2.5 fill-white text-white" />
                       <span>PROMO</span>
                     </div>
                   )}
+
                   {item.badge === "SULTAN" && (
-                    <div className="inline-flex items-center gap-1 px-2 py-0.5 mt-0.5 rounded-md bg-gradient-to-r from-amber-500 to-yellow-600 text-black text-[9px] font-black tracking-wider uppercase shadow-[0_0_8px_rgba(245,158,11,0.6)]">
-                      <Crown className="w-2.5 h-2.5 fill-black" />
+                    <div className="inline-flex items-center gap-1 px-2 py-0.5 mt-0.5 rounded-md bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 text-black text-[9px] font-black tracking-wider uppercase shadow-[0_0_8px_rgba(245,158,11,0.6)]">
+                      <Crown className="w-2.5 h-2.5 fill-black text-black" />
                       <span>SULTAN</span>
                     </div>
                   )}
@@ -324,17 +378,15 @@ export default function AdminPricelist({ onToast }: AdminPricelistProps) {
       </div>
 
       {/* ======================================================== */}
-      {/* MODAL: TAMBAH / EDIT NOMINAL ROBUX (Clean BloxyLucy Style) */}
+      {/* MODAL: TAMBAH / EDIT NOMINAL ROBUX */}
       {/* ======================================================== */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          {/* Backdrop */}
           <div
             onClick={() => setIsModalOpen(false)}
             className="fixed inset-0 bg-black/80 backdrop-blur-sm transition-opacity"
           />
 
-          {/* Dialog Container */}
           <div className="relative w-full max-w-md rounded-3xl bg-[#0D121F] border border-slate-800 shadow-2xl p-6 sm:p-7 overflow-hidden z-10 animate-in fade-in zoom-in-95 duration-200">
             {/* Header */}
             <div className="flex items-center justify-between pb-4 border-b border-slate-800/80 mb-5">

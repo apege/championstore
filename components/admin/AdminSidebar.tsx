@@ -1,8 +1,9 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { supabase } from "@/lib/supabase/client";
 import {
   LayoutDashboard,
   Inbox,
@@ -19,6 +20,7 @@ import {
   Store,
   UserCog,
   MessageCircle,
+  MessageSquare,
   X,
   ExternalLink,
 } from "lucide-react";
@@ -36,6 +38,69 @@ export default function AdminSidebar({
   isOpen,
   onClose,
 }: AdminSidebarProps) {
+  const [stats, setStats] = useState({
+    pendingOrders: 0,
+    processingOrders: 0,
+  });
+
+  const loadBadgeStats = async () => {
+    try {
+      const res = await fetch("/api/admin/stats");
+      const json = await res.json();
+      if (json.success && json.data) {
+        setStats({
+          pendingOrders: Number(json.data.pendingOrders) || 0,
+          processingOrders: Number(json.data.processingOrders) || 0,
+        });
+      }
+    } catch (err) {
+      console.warn("Failed to load badge stats:", err);
+    }
+  };
+
+  useEffect(() => {
+    // 1. Initial Load
+    loadBadgeStats();
+
+    // 2. Real-time Supabase Table Subscription
+    const channel = supabase
+      .channel("admin-sidebar-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "orders" },
+        () => {
+          loadBadgeStats();
+        }
+      )
+      .subscribe();
+
+    // 3. Custom Window Event (fires instantly on status changes)
+    const handleCustomUpdate = () => {
+      loadBadgeStats();
+    };
+    window.addEventListener("champion-orders-updated", handleCustomUpdate);
+
+    // 4. Window Focus / Visibility Change (instant refresh on tab return)
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        loadBadgeStats();
+      }
+    };
+    window.addEventListener("visibilitychange", handleVisibility);
+    window.addEventListener("focus", handleCustomUpdate);
+
+    // 5. Fast background polling fallback (2.5s)
+    const interval = setInterval(loadBadgeStats, 2500);
+
+    return () => {
+      supabase.removeChannel(channel);
+      window.removeEventListener("champion-orders-updated", handleCustomUpdate);
+      window.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("focus", handleCustomUpdate);
+      clearInterval(interval);
+    };
+  }, []);
+
   const menuSections = [
     {
       title: null,
@@ -56,15 +121,15 @@ export default function AdminSidebar({
           id: "order-masuk",
           label: "Order Masuk",
           icon: Inbox,
-          badge: "24",
-          badgeColor: "bg-[#DC2626] text-white",
+          badge: stats.pendingOrders > 0 ? String(stats.pendingOrders) : null,
+          badgeColor: "bg-[#FF1F3D] text-white shadow-[0_0_10px_rgba(255,31,61,0.6)]",
         },
         {
           id: "order-diproses",
           label: "Order Diproses",
           icon: Clock,
-          badge: "8",
-          badgeColor: "bg-[#2563EB] text-white",
+          badge: stats.processingOrders > 0 ? String(stats.processingOrders) : null,
+          badgeColor: "bg-[#2563EB] text-white shadow-[0_0_10px_rgba(37,99,235,0.6)]",
         },
         {
           id: "order-selesai",
@@ -114,6 +179,18 @@ export default function AdminSidebar({
       ],
     },
     {
+      title: "KONTEN & ULASAN",
+      items: [
+        {
+          id: "testimonials",
+          label: "Kelola Testimoni",
+          icon: MessageSquare,
+          badge: null,
+          badgeColor: "",
+        },
+      ],
+    },
+    {
       title: "KEUANGAN",
       items: [
         {
@@ -156,18 +233,18 @@ export default function AdminSidebar({
         }`}
       >
         {/* Full Logo Header */}
-        <div className="px-4 py-4 sm:py-5 border-b border-slate-800/60 flex items-center justify-between">
+        <div className="h-28 sm:h-32 px-4 flex items-center justify-between border-b border-slate-800/80 bg-[#070A10]/80">
           <Link
-            href="/"
-            className="flex-1 flex items-center justify-center group transition-transform active:scale-95"
-            title="Kembali ke Beranda Store"
+            href="/admin"
+            className="w-full flex items-center justify-center group py-2"
           >
-            <div className="relative h-20 sm:h-24 w-full max-w-[220px] flex items-center justify-center">
+            <div className="relative h-20 sm:h-24 w-full flex items-center justify-center transition-all duration-300 group-hover:scale-110">
               <Image
                 src="/logo.png"
                 alt="ChampionStore Logo"
-                fill
-                className="object-contain drop-shadow-[0_0_18px_rgba(239,68,68,0.4)] scale-110 sm:scale-115"
+                width={200}
+                height={90}
+                className="h-full w-auto object-contain drop-shadow-[0_0_16px_rgba(255,31,61,0.5)] scale-110 sm:scale-115"
                 priority
                 unoptimized
               />
@@ -216,17 +293,19 @@ export default function AdminSidebar({
                       <div className="flex items-center gap-2.5">
                         <Icon
                           className={`w-4 h-4 transition-transform group-hover:scale-110 ${
-                            isActive ? "text-red-400 drop-shadow-[0_0_6px_rgba(239,68,68,0.8)]" : "text-slate-400"
+                            isActive
+                              ? "text-red-400 drop-shadow-[0_0_6px_rgba(239,68,68,0.8)]"
+                              : "text-slate-400"
                           }`}
                         />
-                        <span className="tracking-wide">
-                          {item.label}
-                        </span>
+                        <span className="tracking-wide">{item.label}</span>
                       </div>
 
+                      {/* Realtime Circular Pill Badge */}
                       {item.badge && (
                         <span
-                          className={`px-1.5 py-0.5 text-[10px] font-extrabold rounded-full ${item.badgeColor} shadow-sm animate-pulse`}
+                          key={item.badge}
+                          className={`w-5 h-5 min-w-[20px] rounded-full flex items-center justify-center text-[10px] font-black leading-none ${item.badgeColor} transition-transform animate-in zoom-in duration-150`}
                         >
                           {item.badge}
                         </span>
@@ -242,41 +321,38 @@ export default function AdminSidebar({
         {/* Bottom Help Widget Card */}
         <div className="p-3 border-t border-slate-800/80 bg-[#070A10]/95">
           <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-red-950/30 via-slate-900/80 to-slate-950 border border-red-900/30 p-3 shadow-lg">
-            <div className="flex items-start justify-between">
-              <div className="space-y-1 pr-1">
-                <h4 className="text-[11px] font-bold text-white flex items-center gap-1">
-                  Butuh Bantuan?
-                </h4>
-                <p className="text-[10px] text-slate-300 leading-tight">
-                  Tim <span className="text-red-400 font-semibold">ChampionStoreIDN</span> siap membantu kamu!
-                </p>
-                <div className="pt-1.5">
-                  <a
-                    href="https://wa.me/6281234567890?text=Halo%20Admin%20ChampionStore"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white text-[10px] font-bold rounded-lg transition-all shadow-[0_0_10px_rgba(239,68,68,0.4)] active:scale-95"
-                  >
-                    <MessageCircle className="w-3 h-3" />
-                    Chat Admin
-                  </a>
-                </div>
+            <div className="flex items-start gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-red-600/20 border border-red-500/40 text-red-400 flex items-center justify-center shrink-0">
+                <MessageCircle className="w-4 h-4" />
               </div>
-
-              {/* Support Icon */}
-              <div className="w-10 h-10 shrink-0 rounded-xl bg-red-950/60 border border-red-500/40 text-red-400 flex items-center justify-center shadow-md">
-                <MessageCircle className="w-5 h-5" />
+              <div className="space-y-0.5">
+                <h4 className="text-xs font-bold text-white">Butuh Bantuan?</h4>
+                <p className="text-[10px] text-slate-400 leading-tight">
+                  Tim ChampionStore siap membantu kamu!
+                </p>
               </div>
             </div>
+            <a
+              href="https://wa.me/6285828378025"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2.5 w-full py-1.5 px-3 bg-red-600/20 hover:bg-red-600/30 border border-red-500/50 hover:border-red-500 rounded-xl text-[11px] font-bold text-red-300 hover:text-white flex items-center justify-center gap-1.5 transition-all active:scale-95"
+            >
+              <MessageCircle className="w-3.5 h-3.5" />
+              <span>Chat Admin</span>
+            </a>
           </div>
 
-          <div className="mt-2 text-center">
-            <Link
+          <div className="mt-2 flex items-center justify-between text-[10px] text-slate-400 px-1 font-medium">
+            <a
               href="/"
-              className="inline-flex items-center gap-1 text-[10px] text-slate-400 hover:text-red-400 font-medium transition-colors"
+              target="_blank"
+              className="hover:text-slate-200 transition-colors flex items-center gap-1"
             >
-              Lihat Toko Publik <ExternalLink className="w-2.5 h-2.5" />
-            </Link>
+              <span>Lihat Toko Publik</span>
+              <ExternalLink className="w-2.5 h-2.5" />
+            </a>
+            <span className="text-slate-400 font-bold">ChampionStore v2.0</span>
           </div>
         </div>
       </aside>

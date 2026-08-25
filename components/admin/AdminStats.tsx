@@ -1,6 +1,7 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase/client";
 import {
   ShoppingBag,
   Package,
@@ -15,107 +16,173 @@ interface AdminStatsProps {
 }
 
 export default function AdminStats({ onSelectCategory }: AdminStatsProps) {
+  const [dataStats, setDataStats] = useState({
+    pendingOrders: 0,
+    processingOrders: 0,
+    completedOrders: 0,
+    totalProducts: 7,
+    totalCustomers: 0,
+  });
+
+  const loadStats = async () => {
+    try {
+      const res = await fetch("/api/admin/stats");
+      const json = await res.json();
+      if (json.success && json.data) {
+        setDataStats((prev) => ({
+          ...prev,
+          pendingOrders: json.data.pendingOrders,
+          processingOrders: json.data.processingOrders,
+          completedOrders: json.data.completedOrders,
+          totalCustomers: json.data.totalCustomers,
+        }));
+      }
+
+      const prodRes = await fetch("/api/products");
+      const prodJson = await prodRes.json();
+      if (prodJson.success && prodJson.data) {
+        setDataStats((prev) => ({
+          ...prev,
+          totalProducts: prodJson.data.length,
+        }));
+      }
+    } catch (err) {
+      console.warn("Failed to fetch admin stats:", err);
+    }
+  };
+
+  useEffect(() => {
+    loadStats();
+
+    const channel = supabase
+      .channel("admin-stats-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "orders" },
+        () => {
+          loadStats();
+        }
+      )
+      .subscribe();
+
+    const handleCustomUpdate = () => {
+      loadStats();
+    };
+    window.addEventListener("champion-orders-updated", handleCustomUpdate);
+    window.addEventListener("focus", handleCustomUpdate);
+
+    const interval = setInterval(loadStats, 3000);
+
+    return () => {
+      supabase.removeChannel(channel);
+      window.removeEventListener("champion-orders-updated", handleCustomUpdate);
+      window.removeEventListener("focus", handleCustomUpdate);
+      clearInterval(interval);
+    };
+  }, []);
+
   const stats = [
     {
       id: "order-masuk",
       label: "Order Masuk",
-      value: "24",
-      change: "+12 dari kemarin ↑",
-      changePositive: true,
+      value: dataStats.pendingOrders.toString(),
+      subtext: "Perlu konfirmasi segera",
       icon: ShoppingBag,
-      iconBg: "bg-red-950/60 text-red-400 border-red-800/60",
-      cardBorder: "border-red-900/40 hover:border-red-500/60 hover:shadow-[0_0_20px_rgba(239,68,68,0.25)]",
-      gradient: "from-red-950/20 via-slate-900/60 to-[#0A0E17]",
-      accentGlow: "bg-red-500/10",
+      color: "text-red-400",
+      bgColor: "bg-red-950/40",
+      borderColor: "border-red-800/40",
+      badgeColor: "bg-red-900/60 text-red-300",
+      badgeText: "Realtime",
     },
     {
       id: "order-diproses",
       label: "Order Diproses",
-      value: "8",
-      change: "+3 dari kemarin ↑",
-      changePositive: true,
+      value: dataStats.processingOrders.toString(),
+      subtext: "Sedang dikirimkan",
       icon: Package,
-      iconBg: "bg-blue-950/60 text-blue-400 border-blue-800/60",
-      cardBorder: "border-blue-900/40 hover:border-blue-500/60 hover:shadow-[0_0_20px_rgba(59,130,246,0.25)]",
-      gradient: "from-blue-950/20 via-slate-900/60 to-[#0A0E17]",
-      accentGlow: "bg-blue-500/10",
+      color: "text-blue-400",
+      bgColor: "bg-blue-950/40",
+      borderColor: "border-blue-800/40",
+      badgeColor: "bg-blue-900/60 text-blue-300",
+      badgeText: "Proses",
     },
     {
       id: "order-selesai",
       label: "Order Selesai",
-      value: "156",
-      change: "+28 dari kemarin ↑",
-      changePositive: true,
+      value: dataStats.completedOrders.toString(),
+      subtext: "Transaksi sukses",
       icon: CheckCircle2,
-      iconBg: "bg-emerald-950/60 text-emerald-400 border-emerald-800/60",
-      cardBorder: "border-emerald-900/40 hover:border-emerald-500/60 hover:shadow-[0_0_20px_rgba(16,185,129,0.25)]",
-      gradient: "from-emerald-950/20 via-slate-900/60 to-[#0A0E17]",
-      accentGlow: "bg-emerald-500/10",
+      color: "text-emerald-400",
+      bgColor: "bg-emerald-950/40",
+      borderColor: "border-emerald-800/40",
+      badgeColor: "bg-emerald-900/60 text-emerald-300",
+      badgeText: "Sukses",
     },
     {
       id: "pricelist",
-      label: "Pricelist",
-      value: "42",
-      change: "Aktif",
-      changePositive: true,
+      label: "Total Produk",
+      value: `${dataStats.totalProducts} Paket`,
+      subtext: "Nominal Robux aktif",
       icon: Boxes,
-      iconBg: "bg-purple-950/60 text-purple-400 border-purple-800/60",
-      cardBorder: "border-purple-900/40 hover:border-purple-500/60 hover:shadow-[0_0_20px_rgba(168,85,247,0.25)]",
-      gradient: "from-purple-950/20 via-slate-900/60 to-[#0A0E17]",
-      accentGlow: "bg-purple-500/10",
+      color: "text-purple-400",
+      bgColor: "bg-purple-950/40",
+      borderColor: "border-purple-800/40",
+      badgeColor: "bg-purple-900/60 text-purple-300",
+      badgeText: "Pricelist",
     },
     {
       id: "daftar-pelanggan",
       label: "Total Pelanggan",
-      value: "1.289",
-      change: "+37 pelanggan baru",
-      changePositive: true,
+      value: dataStats.totalCustomers.toString(),
+      subtext: "Pelanggan terdaftar",
       icon: Users2,
-      iconBg: "bg-rose-950/60 text-rose-400 border-rose-800/60",
-      cardBorder: "border-rose-900/40 hover:border-rose-500/60 hover:shadow-[0_0_20px_rgba(244,63,94,0.25)]",
-      gradient: "from-rose-950/20 via-slate-900/60 to-[#0A0E17]",
-      accentGlow: "bg-rose-500/10",
+      color: "text-amber-400",
+      bgColor: "bg-amber-950/40",
+      borderColor: "border-amber-800/40",
+      badgeColor: "bg-amber-900/60 text-amber-300",
+      badgeText: "Database",
     },
   ];
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-3.5">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-3.5">
       {stats.map((item) => {
         const Icon = item.icon;
         return (
           <div
             key={item.id}
             onClick={() => onSelectCategory && onSelectCategory(item.id)}
-            className={`relative overflow-hidden rounded-2xl bg-gradient-to-b ${item.gradient} border ${item.cardBorder} p-3 sm:p-3.5 transition-all duration-300 cursor-pointer group flex flex-col justify-between`}
+            className="group relative rounded-2xl bg-[#090D17]/90 border border-slate-800/80 p-3 sm:p-4 transition-all duration-200 hover:border-slate-700 hover:bg-[#0B101D] hover:shadow-lg hover:shadow-red-950/10 cursor-pointer overflow-hidden flex flex-col justify-between"
           >
-            {/* Ambient glow */}
-            <div
-              className={`absolute top-0 right-0 w-20 h-20 rounded-full blur-xl pointer-events-none ${item.accentGlow}`}
-            />
-
-            {/* Top row: Icon & Header */}
-            <div className="flex items-center gap-2.5 mb-1.5">
+            {/* Top Row: Icon & Status Badge */}
+            <div className="flex items-start justify-between gap-1.5 mb-2">
               <div
-                className={`w-8 h-8 shrink-0 rounded-xl border flex items-center justify-center shadow-md transition-transform group-hover:scale-105 ${item.iconBg}`}
+                className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl ${item.bgColor} border ${item.borderColor} ${item.color} flex items-center justify-center transition-transform group-hover:scale-110 shrink-0`}
               >
-                <Icon className="w-4 h-4" />
+                <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </div>
-              <span className="text-[11px] sm:text-xs font-semibold text-slate-300 group-hover:text-white transition-colors line-clamp-1">
-                {item.label}
+
+              <span
+                className={`px-1.5 py-0.5 rounded-md text-[9px] font-extrabold uppercase tracking-wider ${item.badgeColor} shrink-0`}
+              >
+                {item.badgeText}
               </span>
             </div>
 
-            {/* Middle: Big Stat Number */}
+            {/* Middle Value & Label */}
             <div>
-              <div className="text-xl sm:text-2xl font-black text-white tracking-tight group-hover:text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.2)]">
+              <div className="text-lg sm:text-xl font-black text-white tracking-tight group-hover:text-[#FF1F3D] transition-colors">
                 {item.value}
+              </div>
+              <div className="text-[11px] sm:text-xs font-bold text-slate-300 mt-0.5 truncate">
+                {item.label}
               </div>
             </div>
 
-            {/* Bottom: Trend Subtitle */}
-            <div className="mt-1 flex items-center gap-1 text-[10px] sm:text-[11px] font-semibold text-emerald-400">
-              <TrendingUp className="w-3 h-3 shrink-0" />
-              <span className="truncate">{item.change}</span>
+            {/* Bottom Subtext */}
+            <div className="mt-1 pt-1.5 border-t border-slate-800/60 flex items-center justify-between text-[10px] text-slate-400">
+              <span className="truncate">{item.subtext}</span>
+              <TrendingUp className="w-2.5 h-2.5 text-slate-400 shrink-0 group-hover:text-white transition-colors" />
             </div>
           </div>
         );

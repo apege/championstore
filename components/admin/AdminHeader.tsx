@@ -21,9 +21,13 @@ export default function AdminHeader({
   searchQuery,
   setSearchQuery,
 }: AdminHeaderProps) {
-  const handleLogout = () => {
-    // Redirect or confirm logout
+  const handleLogout = async () => {
     if (confirm("Apakah Anda yakin ingin keluar dari Admin Panel?")) {
+      try {
+        await fetch("/api/admin/auth", { method: "DELETE" });
+      } catch (e) {
+        console.warn("Logout err:", e);
+      }
       window.location.href = "/";
     }
   };

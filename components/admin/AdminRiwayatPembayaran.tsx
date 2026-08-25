@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import {
   RefreshCw,
@@ -8,8 +8,7 @@ import {
   TrendingUp,
   Globe,
   MessageCircle,
-  Coins,
-  ArrowUpRight,
+  Loader2,
 } from "lucide-react";
 
 export interface PaymentMutation {
@@ -21,6 +20,7 @@ export interface PaymentMutation {
   amount: string;
   amountNum: number;
   robux: string;
+  robuxNum: number;
 }
 
 interface AdminRiwayatPembayaranProps {
@@ -36,109 +36,74 @@ export default function AdminRiwayatPembayaran({
     "ALL" | "WEBSITE" | "WHATSAPP"
   >("ALL");
 
-  const [mutations] = useState<PaymentMutation[]>([
-    {
-      id: "1",
-      orderCode: "BLX56315343",
-      username: "antooomeny",
-      source: "WEBSITE",
-      date: "24 Agu 2026",
-      amount: "+Rp 45.000",
-      amountNum: 45000,
-      robux: "2.200 Robux",
-    },
-    {
-      id: "2",
-      orderCode: "BLX76338364",
-      username: "antooomeny",
-      source: "WEBSITE",
-      date: "24 Agu 2026",
-      amount: "+Rp 45.000",
-      amountNum: 45000,
-      robux: "2.200 Robux",
-    },
-    {
-      id: "3",
-      orderCode: "BLX71185022",
-      username: "jejesyl",
-      source: "WEBSITE",
-      date: "24 Agu 2026",
-      amount: "+Rp 35.000",
-      amountNum: 35000,
-      robux: "1.800 Robux",
-    },
-    {
-      id: "4",
-      orderCode: "BLX86838059",
-      username: "antooomeny",
-      source: "WEBSITE",
-      date: "24 Agu 2026",
-      amount: "+Rp 45.000",
-      amountNum: 45000,
-      robux: "2.200 Robux",
-    },
-    {
-      id: "5",
-      orderCode: "BLX30276780",
-      username: "ayyzuyu09",
-      source: "WEBSITE",
-      date: "24 Agu 2026",
-      amount: "+Rp 35.000",
-      amountNum: 35000,
-      robux: "1.800 Robux",
-    },
-    {
-      id: "6",
-      orderCode: "BLX29841029",
-      username: "dragon_slayer",
-      source: "WHATSAPP",
-      date: "24 Agu 2026",
-      amount: "+Rp 275.000",
-      amountNum: 275000,
-      robux: "2.200 Robux",
-    },
-    {
-      id: "7",
-      orderCode: "BLX19283741",
-      username: "rbx_master",
-      source: "WHATSAPP",
-      date: "23 Agu 2026",
-      amount: "+Rp 260.000",
-      amountNum: 260000,
-      robux: "2.200 Robux",
-    },
-    {
-      id: "8",
-      orderCode: "BLX19283740",
-      username: "PinkQueen_23",
-      source: "WEBSITE",
-      date: "23 Agu 2026",
-      amount: "+Rp 275.000",
-      amountNum: 275000,
-      robux: "2.200 Robux",
-    },
-    {
-      id: "9",
-      orderCode: "BLX19283739",
-      username: "gaming_pro21",
-      source: "WEBSITE",
-      date: "23 Agu 2026",
-      amount: "+Rp 215.000",
-      amountNum: 215000,
-      robux: "1.700 Robux",
-    },
-  ]);
+  const [mutations, setMutations] = useState<PaymentMutation[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const handleRefresh = () => {
-    setIsRefreshing(true);
-    setTimeout(() => {
-      setIsRefreshing(false);
-      onToast("Riwayat pembayaran berhasil diperbarui!", "success");
-    }, 500);
+  const fetchPayments = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch("/api/orders");
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data)) {
+        const mapped: PaymentMutation[] = json.data.map((o: any) => ({
+          id: String(o.id),
+          orderCode: o.order_code || o.id,
+          username: o.customer_username,
+          source: (o.source || "WEBSITE") === "WHATSAPP" ? "WHATSAPP" : "WEBSITE",
+          date: new Date(o.created_at || Date.now()).toLocaleDateString("id-ID", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+          }),
+          amount: `+Rp ${Number(o.total_price || 0).toLocaleString("id-ID")}`,
+          amountNum: Number(o.total_price || 0),
+          robux: `${Number(o.total_robux || 0).toLocaleString("id-ID")} Robux`,
+          robuxNum: Number(o.total_robux || 0),
+        }));
+        setMutations(mapped);
+      } else {
+        setMutations([]);
+      }
+    } catch (e) {
+      console.warn("Failed to fetch payments:", e);
+      setMutations([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const websiteCount = mutations.filter((m) => m.source === "WEBSITE").length;
-  const waCount = mutations.filter((m) => m.source === "WHATSAPP").length;
+  useEffect(() => {
+    fetchPayments();
+  }, []);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await fetchPayments();
+    setIsRefreshing(false);
+    onToast("Riwayat pembayaran berhasil disinkronkan!", "success");
+  };
+
+  // Metrics Calculations (100% Dynamic)
+  const totalDanaMasuk = mutations.reduce((sum, m) => sum + m.amountNum, 0);
+  const totalTransactions = mutations.length;
+  const totalRobuxTerjual = mutations.reduce((sum, m) => sum + m.robuxNum, 0);
+  const avgOrderValue =
+    totalTransactions > 0 ? Math.round(totalDanaMasuk / totalTransactions) : 0;
+
+  // Channel Breakdown
+  const websiteMutations = mutations.filter((m) => m.source === "WEBSITE");
+  const waMutations = mutations.filter((m) => m.source === "WHATSAPP");
+
+  const websiteCount = websiteMutations.length;
+  const waCount = waMutations.length;
+
+  const websiteOmset = websiteMutations.reduce((sum, m) => sum + m.amountNum, 0);
+  const waOmset = waMutations.reduce((sum, m) => sum + m.amountNum, 0);
+
+  const websitePct =
+    totalDanaMasuk > 0 ? ((websiteOmset / totalDanaMasuk) * 100).toFixed(1) : "0.0";
+  const waPct =
+    totalDanaMasuk > 0 ? ((waOmset / totalDanaMasuk) * 100).toFixed(1) : "0.0";
 
   const filteredMutations = mutations.filter((m) => {
     const matchChannel =
@@ -165,7 +130,8 @@ export default function AdminRiwayatPembayaran({
 
         <button
           onClick={handleRefresh}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-slate-200 text-xs font-bold transition-all self-start sm:self-auto active:scale-95 shadow-sm cursor-pointer"
+          disabled={isRefreshing}
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-slate-200 text-xs font-bold transition-all self-start sm:self-auto active:scale-95 shadow-sm cursor-pointer disabled:opacity-50"
         >
           <RefreshCw
             className={`w-3.5 h-3.5 text-[#FF1F3D] ${
@@ -177,7 +143,7 @@ export default function AdminRiwayatPembayaran({
       </div>
 
       {/* ======================================================== */}
-      {/* 1. TOP 3 METRIC CARDS */}
+      {/* 1. TOP 3 METRIC CARDS (100% REALTIME FROM DATABASE) */}
       {/* ======================================================== */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5">
         {/* Card 1: TOTAL DANA MASUK */}
@@ -193,10 +159,10 @@ export default function AdminRiwayatPembayaran({
 
           <div className="mt-3">
             <div className="text-2xl sm:text-3xl font-black text-[#FF1F3D] tracking-tight drop-shadow-[0_0_10px_rgba(255,31,61,0.5)]">
-              Rp 1.820.000
+              Rp {totalDanaMasuk.toLocaleString("id-ID")}
             </div>
             <p className="text-xs text-slate-400 mt-1">
-              Dari 27 transaksi pembayaran lunas
+              Dari {totalTransactions} transaksi pembayaran
             </p>
           </div>
         </div>
@@ -221,11 +187,11 @@ export default function AdminRiwayatPembayaran({
 
           <div className="mt-3">
             <div className="text-2xl sm:text-3xl font-black text-amber-400 tracking-tight flex items-baseline gap-1.5">
-              <span>97.800</span>
+              <span>{totalRobuxTerjual.toLocaleString("id-ID")}</span>
               <span className="text-sm font-extrabold text-amber-500">R$</span>
             </div>
             <p className="text-xs text-slate-400 mt-1">
-              Robux terkirim ke akun pelanggan
+              Robux dipesan oleh pelanggan
             </p>
           </div>
         </div>
@@ -243,7 +209,7 @@ export default function AdminRiwayatPembayaran({
 
           <div className="mt-3">
             <div className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-              Rp 67.407
+              Rp {avgOrderValue.toLocaleString("id-ID")}
             </div>
             <p className="text-xs text-emerald-400/90 font-medium mt-1">
               Average Order Value per transaksi
@@ -253,7 +219,7 @@ export default function AdminRiwayatPembayaran({
       </div>
 
       {/* ======================================================== */}
-      {/* 2. OMSET PER METODE PEMBAYARAN */}
+      {/* 2. OMSET PER METODE PEMBAYARAN (REALTIME FROM ORDERS) */}
       {/* ======================================================== */}
       <div className="space-y-3">
         <div>
@@ -278,7 +244,7 @@ export default function AdminRiwayatPembayaran({
                 </span>
               </div>
               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-red-950/60 text-red-400 border border-red-800/40">
-                70.6%
+                {websitePct}%
               </span>
             </div>
 
@@ -288,7 +254,7 @@ export default function AdminRiwayatPembayaran({
                   Total Omset
                 </span>
                 <span className="text-xl sm:text-2xl font-black text-[#FF1F3D] tracking-tight">
-                  Rp 1.285.000
+                  Rp {websiteOmset.toLocaleString("id-ID")}
                 </span>
               </div>
 
@@ -297,7 +263,7 @@ export default function AdminRiwayatPembayaran({
                   Transaksi
                 </span>
                 <span className="text-xs sm:text-sm font-extrabold text-white">
-                  25 transaksi
+                  {websiteCount} transaksi
                 </span>
               </div>
             </div>
@@ -305,8 +271,8 @@ export default function AdminRiwayatPembayaran({
             {/* Progress Bar */}
             <div className="w-full h-2 bg-slate-900 rounded-full overflow-hidden border border-slate-800">
               <div
-                className="h-full bg-gradient-to-r from-red-600 to-[#FF1F3D] rounded-full shadow-[0_0_8px_rgba(255,31,61,0.6)]"
-                style={{ width: "70.6%" }}
+                className="h-full bg-gradient-to-r from-red-600 to-[#FF1F3D] rounded-full shadow-[0_0_8px_rgba(255,31,61,0.6)] transition-all duration-500"
+                style={{ width: `${websitePct}%` }}
               />
             </div>
           </div>
@@ -323,7 +289,7 @@ export default function AdminRiwayatPembayaran({
                 </span>
               </div>
               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-950/60 text-emerald-400 border border-emerald-800/40">
-                29.4%
+                {waPct}%
               </span>
             </div>
 
@@ -333,7 +299,7 @@ export default function AdminRiwayatPembayaran({
                   Total Omset
                 </span>
                 <span className="text-xl sm:text-2xl font-black text-[#FF1F3D] tracking-tight">
-                  Rp 535.000
+                  Rp {waOmset.toLocaleString("id-ID")}
                 </span>
               </div>
 
@@ -342,7 +308,7 @@ export default function AdminRiwayatPembayaran({
                   Transaksi
                 </span>
                 <span className="text-xs sm:text-sm font-extrabold text-white">
-                  2 transaksi
+                  {waCount} transaksi
                 </span>
               </div>
             </div>
@@ -350,8 +316,8 @@ export default function AdminRiwayatPembayaran({
             {/* Progress Bar */}
             <div className="w-full h-2 bg-slate-900 rounded-full overflow-hidden border border-slate-800">
               <div
-                className="h-full bg-gradient-to-r from-emerald-600 to-emerald-400 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.6)]"
-                style={{ width: "29.4%" }}
+                className="h-full bg-gradient-to-r from-emerald-600 to-emerald-400 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.6)] transition-all duration-500"
+                style={{ width: `${waPct}%` }}
               />
             </div>
           </div>
@@ -369,7 +335,7 @@ export default function AdminRiwayatPembayaran({
               Log Mutasi Pembayaran Masuk
             </h3>
             <p className="text-xs text-slate-400 mt-0.5">
-              Riwayat penerimaan pembayaran yang valid dan sudah lunas
+              Riwayat penerimaan pembayaran yang valid dan sudah masuk sistem
             </p>
           </div>
 
@@ -424,9 +390,16 @@ export default function AdminRiwayatPembayaran({
 
         {/* Mutations Rows */}
         <div className="space-y-3">
-          {filteredMutations.length === 0 ? (
+          {loading ? (
+            <div className="py-12 flex justify-center items-center gap-2 text-slate-400 text-xs">
+              <Loader2 className="w-4 h-4 animate-spin text-[#FF1F3D]" />
+              <span>Memuat riwayat pembayaran...</span>
+            </div>
+          ) : filteredMutations.length === 0 ? (
             <div className="py-12 text-center text-slate-500 text-xs">
-              Tidak ada log pembayaran yang cocok dengan filter pencarian.
+              {searchTerm
+                ? "Tidak ada log pembayaran yang cocok dengan kata kunci."
+                : "Belum ada transaksi pembayaran yang tercatat di database."}
             </div>
           ) : (
             filteredMutations.map((item) => (
