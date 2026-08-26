@@ -45,6 +45,31 @@ export default function AdminModals({
   const [newPrice, setNewPrice] = useState("");
   const [newStock, setNewStock] = useState("1000");
 
+  // States for All Activities
+  const [allLogs, setAllLogs] = useState<any[]>([]);
+  const [logsLoading, setLogsLoading] = useState(false);
+
+  React.useEffect(() => {
+    if (activeModal === "edit-notes") {
+      setTempNote(adminNote);
+    }
+  }, [activeModal, adminNote]);
+
+  React.useEffect(() => {
+    if (activeModal === "all-activities") {
+      setLogsLoading(true);
+      fetch("/api/admin/logs?limit=50")
+        .then((res) => res.json())
+        .then((json) => {
+          if (json.success && Array.isArray(json.data)) {
+            setAllLogs(json.data);
+          }
+        })
+        .catch((err) => console.warn("Failed to load all logs:", err))
+        .finally(() => setLogsLoading(false));
+    }
+  }, [activeModal]);
+
   if (!activeModal) return null;
 
   const handleActivateId = () => {
@@ -55,12 +80,17 @@ export default function AdminModals({
   const handleSaveNote = async () => {
     setAdminNote(tempNote);
     try {
-      await fetch("/api/store", {
+      const res = await fetch("/api/store", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ adminNote: tempNote }),
       });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || "Gagal menyimpan catatan");
+      }
       onToast("Catatan admin berhasil disimpan ke database!", "success");
+      window.dispatchEvent(new CustomEvent("champion-store-updated"));
     } catch {
       onToast("Catatan diperbarui di tampilan lokal", "info");
     }
@@ -110,11 +140,11 @@ export default function AdminModals({
       />
 
       {/* Modal Box */}
-      <div className="relative w-full max-w-lg rounded-3xl bg-[#0D121F] border border-slate-800 shadow-2xl p-6 overflow-hidden z-10 animate-in fade-in zoom-in-95 duration-200">
+      <div className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl bg-[#0D121F] border border-slate-800 shadow-2xl p-4 sm:p-6 z-10 animate-in fade-in zoom-in-95 duration-200 scrollbar-thin scrollbar-thumb-slate-800">
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-5 right-5 p-2 rounded-xl bg-slate-900/80 border border-slate-800 text-slate-400 hover:text-white hover:border-slate-700 transition-colors"
+          className="absolute top-4 sm:top-5 right-4 sm:right-5 p-2 rounded-xl bg-slate-900/80 border border-slate-800 text-slate-400 hover:text-white hover:border-slate-700 transition-colors z-20"
         >
           <X className="w-4 h-4" />
         </button>
@@ -425,31 +455,83 @@ export default function AdminModals({
               </div>
             </div>
 
-            <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1 text-xs">
-              {[
-                { time: "10m lalu", text: "Order #CLX25051893 masuk dari PinkQueen_23", tag: "Order" },
-                { time: "25m lalu", text: "Order #CLX25051890 sukses diproses", tag: "Sukses" },
-                { time: "40m lalu", text: "Admin mengubah status ID #CLX25051888", tag: "System" },
-                { time: "1j lalu", text: 'Produk baru "5600 Robux" ditambahkan oleh Super Admin', tag: "Katalog" },
-                { time: "2j lalu", text: "Pelanggan baru terdaftar: star_lucy08", tag: "User" },
-                { time: "3j lalu", text: "Backup database harian berhasil", tag: "System" },
-                { time: "5j lalu", text: "Stok 10.000 Robux restock otomatis", tag: "Inventory" },
-              ].map((item, idx) => (
-                <div key={idx} className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <p className="text-slate-200 font-medium">{item.text}</p>
-                    <span className="text-[10px] text-slate-400">{item.time}</span>
-                  </div>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-800 text-slate-300">
-                    {item.tag}
-                  </span>
+            <div className="space-y-2.5 max-h-80 overflow-y-auto pr-1 text-xs scrollbar-thin scrollbar-thumb-slate-800">
+              {logsLoading ? (
+                <div className="py-10 text-center text-slate-400 flex flex-col items-center gap-2">
+                  <Loader2 className="w-5 h-5 text-red-500 animate-spin" />
+                  <span>Memuat log aktivitas...</span>
                 </div>
-              ))}
+              ) : allLogs.length === 0 ? (
+                <div className="py-10 text-center text-slate-500">
+                  Belum ada catatan log aktivitas tersimpan.
+                </div>
+              ) : (
+                allLogs.map((item) => {
+                  const createdAt = new Date(item.created_at || Date.now());
+                  const timeFormatted = createdAt.toLocaleDateString("id-ID", {
+                    day: "numeric",
+                    month: "short",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  });
+
+                  let tagLabel = "System";
+                  let tagBg = "bg-slate-800 text-slate-300";
+                  if (item.type === "order") {
+                    tagLabel = "Order";
+                    tagBg = "bg-amber-950/60 text-amber-400 border border-amber-800/40";
+                  } else if (item.type === "processing") {
+                    tagLabel = "Proses";
+                    tagBg = "bg-blue-950/60 text-blue-400 border border-blue-800/40";
+                  } else if (item.type === "success") {
+                    tagLabel = "Sukses";
+                    tagBg = "bg-emerald-950/60 text-emerald-400 border border-emerald-800/40";
+                  } else if (item.type === "cancelled" || item.type === "blacklist") {
+                    tagLabel = item.type === "blacklist" ? "Blacklist" : "Batal";
+                    tagBg = "bg-red-950/60 text-red-400 border border-red-800/40";
+                  } else if (item.type === "review") {
+                    tagLabel = "Testimoni";
+                    tagBg = "bg-purple-950/60 text-purple-400 border border-purple-800/40";
+                  } else if (item.type === "product") {
+                    tagLabel = "Katalog";
+                    tagBg = "bg-cyan-950/60 text-cyan-400 border border-cyan-800/40";
+                  }
+
+                  return (
+                    <div
+                      key={item.id}
+                      className="p-3 rounded-2xl bg-slate-900/80 border border-slate-800 flex items-start justify-between gap-3"
+                    >
+                      <div className="space-y-1 min-w-0">
+                        <p className="text-slate-200 font-semibold text-xs leading-snug">
+                          {item.details || item.action}
+                        </p>
+                        <div className="flex items-center gap-2 text-[10px] text-slate-400">
+                          <span>{timeFormatted}</span>
+                          {item.user_target && (
+                            <>
+                              <span>•</span>
+                              <span className="text-[#FF1F3D] font-bold">
+                                @{item.user_target}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      <span
+                        className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-md shrink-0 ${tagBg}`}
+                      >
+                        {tagLabel}
+                      </span>
+                    </div>
+                  );
+                })
+              )}
             </div>
 
             <button
               onClick={onClose}
-              className="w-full py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-white"
+              className="w-full py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-white transition-colors cursor-pointer"
             >
               Tutup
             </button>

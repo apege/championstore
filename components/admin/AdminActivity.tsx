@@ -3,8 +3,30 @@
 import React from "react";
 import { Clock, ExternalLink } from "lucide-react";
 
+import { supabase } from "@/lib/supabase/client";
+
 interface AdminActivityProps {
   onViewAll?: () => void;
+}
+
+function getRelativeTime(dateString: string): string {
+  try {
+    const now = new Date();
+    const past = new Date(dateString);
+    const diffMs = now.getTime() - past.getTime();
+    const diffSec = Math.floor(diffMs / 1000);
+    const diffMin = Math.floor(diffSec / 60);
+    const diffHours = Math.floor(diffMin / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffSec < 60) return "Baru saja";
+    if (diffMin < 60) return `${diffMin}m lalu`;
+    if (diffHours < 24) return `${diffHours}j lalu`;
+    if (diffDays < 7) return `${diffDays}h lalu`;
+    return past.toLocaleDateString("id-ID", { day: "numeric", month: "short" });
+  } catch {
+    return "Baru saja";
+  }
 }
 
 export default function AdminActivity({ onViewAll }: AdminActivityProps) {
@@ -18,47 +40,79 @@ export default function AdminActivity({ onViewAll }: AdminActivityProps) {
     }[]
   >([]);
 
-  React.useEffect(() => {
-    async function loadLogs() {
-      try {
-        const res = await fetch("/api/admin/logs?limit=4");
-        const json = await res.json();
-        if (json.success && json.data && json.data.length > 0) {
-          const formatted = json.data.map((log: any) => {
-            const timeAgo = new Date(log.created_at || Date.now()).toLocaleTimeString("id-ID", {
-              hour: "2-digit",
-              minute: "2-digit",
-            });
-            let dotColor = "bg-red-500 shadow-[0_0_8px_#ef4444]";
-            if (log.type === "status") dotColor = "bg-blue-500 shadow-[0_0_8px_#3b82f6]";
-            if (log.type === "product") dotColor = "bg-cyan-400 shadow-[0_0_8px_#22d3ee]";
-            if (log.type === "system") dotColor = "bg-emerald-400 shadow-[0_0_8px_#10b981]";
+  const loadLogs = async () => {
+    try {
+      const res = await fetch("/api/admin/logs?limit=4");
+      const json = await res.json();
+      if (json.success && json.data && json.data.length > 0) {
+        const formatted = json.data.map((log: any) => {
+          const timeAgo = getRelativeTime(log.created_at || new Date().toISOString());
 
-            return {
-              id: log.id,
-              dotColor,
-              time: timeAgo,
-              title: log.details || log.action,
-              user: log.user_target || null,
-            };
-          });
-          setActivities(formatted);
-        } else {
-          setActivities([
-            {
-              id: "1",
-              dotColor: "bg-emerald-400 shadow-[0_0_8px_#10b981]",
-              time: "Baru saja",
-              title: "Backend Supabase terhubung ke sistem",
-              user: "Admin",
-            },
-          ]);
-        }
-      } catch (err) {
-        console.warn("Failed to fetch logs:", err);
+          let dotColor = "bg-amber-400 shadow-[0_0_8px_#f59e0b]";
+          if (log.type === "order") dotColor = "bg-amber-400 shadow-[0_0_8px_#f59e0b]";
+          else if (log.type === "processing") dotColor = "bg-blue-500 shadow-[0_0_8px_#3b82f6]";
+          else if (log.type === "success") dotColor = "bg-emerald-400 shadow-[0_0_8px_#10b981]";
+          else if (log.type === "cancelled" || log.type === "blacklist")
+            dotColor = "bg-red-500 shadow-[0_0_8px_#ef4444]";
+          else if (log.type === "review")
+            dotColor = "bg-purple-400 shadow-[0_0_8px_#a855f7]";
+          else if (log.type === "product" || log.type === "system")
+            dotColor = "bg-cyan-400 shadow-[0_0_8px_#06b6d4]";
+
+          return {
+            id: String(log.id),
+            dotColor,
+            time: timeAgo,
+            title: log.details || log.action,
+            user: log.user_target || null,
+          };
+        });
+        setActivities(formatted);
+      } else {
+        setActivities([
+          {
+            id: "1",
+            dotColor: "bg-emerald-400 shadow-[0_0_8px_#10b981]",
+            time: "Baru saja",
+            title: "Sistem log audit realtime aktif",
+            user: "Admin",
+          },
+        ]);
       }
+    } catch (err) {
+      console.warn("Failed to fetch logs:", err);
     }
+  };
+
+  React.useEffect(() => {
     loadLogs();
+
+    // Realtime Supabase Subscription on activity_logs
+    const channel = supabase
+      .channel("admin-activity-logs-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "activity_logs" },
+        () => {
+          loadLogs();
+        }
+      )
+      .subscribe();
+
+    const handleCustomUpdate = () => {
+      loadLogs();
+    };
+
+    window.addEventListener("champion-orders-updated", handleCustomUpdate);
+    window.addEventListener("focus", handleCustomUpdate);
+    const interval = setInterval(loadLogs, 3500);
+
+    return () => {
+      supabase.removeChannel(channel);
+      window.removeEventListener("champion-orders-updated", handleCustomUpdate);
+      window.removeEventListener("focus", handleCustomUpdate);
+      clearInterval(interval);
+    };
   }, []);
 
   return (

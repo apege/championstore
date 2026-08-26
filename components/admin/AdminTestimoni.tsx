@@ -23,6 +23,7 @@ import {
   Check,
 } from "lucide-react";
 import { ROBUX_PACKAGES } from "@/data/pricelist";
+import { compressToWebP } from "@/lib/compressToWebP";
 
 export interface TestimonialItem {
   id: number;
@@ -221,18 +222,25 @@ export default function AdminTestimoni({ onToast }: AdminTestimoniProps) {
 
   // Handle Photo Upload in form
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const originalFile = e.target.files?.[0];
+    if (!originalFile) return;
 
-    if (file.size > 5 * 1024 * 1024) {
+    if (originalFile.size > 5 * 1024 * 1024) {
       onToast("Ukuran foto maksimal 5MB!", "error");
       return;
     }
 
     try {
       setFormUploading(true);
+      let fileToUpload = originalFile;
+      try {
+        fileToUpload = await compressToWebP(originalFile);
+      } catch (cErr) {
+        console.warn("WebP compression failed, using original file:", cErr);
+      }
+
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("file", fileToUpload);
 
       const res = await fetch("/api/upload", {
         method: "POST",
@@ -242,7 +250,7 @@ export default function AdminTestimoni({ onToast }: AdminTestimoniProps) {
       if (!res.ok || !json.success) throw new Error(json.error || "Gagal upload foto");
 
       setFormImage(json.url);
-      onToast("Foto bukti berhasil diunggah!", "success");
+      onToast("Foto bukti berhasil diunggah (WebP)!", "success");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Gagal upload foto";
       onToast(msg, "error");

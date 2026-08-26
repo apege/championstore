@@ -1,39 +1,19 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React from "react";
+
 import { Edit3, Crown } from "lucide-react";
+import { useAdmin } from "./AdminContext";
 
 interface AdminNotesProps {
-  note?: string;
   onOpenEditModal?: () => void;
 }
 
-export default function AdminNotes({ note, onOpenEditModal }: AdminNotesProps) {
-  const [noteContent, setNoteContent] = useState<string>(
-    note || "Catatan penting untuk tim operasional toko."
-  );
-
-  useEffect(() => {
-    if (note) {
-      setNoteContent(note);
-    } else {
-      async function loadNote() {
-        try {
-          const res = await fetch("/api/store");
-          const json = await res.json();
-          if (json.success && json.data && json.data.adminNote) {
-            setNoteContent(json.data.adminNote);
-          }
-        } catch (err) {
-          console.warn("Failed to load note:", err);
-        }
-      }
-      loadNote();
-    }
-  }, [note]);
+export default function AdminNotes({ onOpenEditModal }: AdminNotesProps) {
+  const { adminNote } = useAdmin();
 
   return (
-    <div className="rounded-3xl bg-[#0B0F19] border border-slate-800/80 p-5 sm:p-6 shadow-lg relative flex flex-col justify-between overflow-hidden">
+    <div className="rounded-3xl bg-[#0B0F19] border border-slate-800/80 p-5 sm:p-6 shadow-lg relative flex flex-col justify-between overflow-hidden h-full">
       {/* Decorative Top-Right Sticky Pin & Crown Card */}
       <div className="absolute top-4 right-4 flex items-center justify-center">
         <div className="relative w-11 h-11 rounded-xl bg-gradient-to-br from-red-950/80 to-slate-900 border border-red-500/40 p-2 flex items-center justify-center shadow-[0_0_12px_rgba(239,68,68,0.3)] rotate-6">
@@ -56,7 +36,7 @@ export default function AdminNotes({ note, onOpenEditModal }: AdminNotesProps) {
         {/* Note Body Box */}
         <div className="p-3.5 rounded-2xl bg-[#0E1422] border border-slate-800/80 space-y-2">
           <p className="text-xs text-slate-300 font-medium leading-relaxed whitespace-pre-line">
-            {noteContent}
+            {adminNote || "Catatan penting untuk tim operasional toko."}
           </p>
         </div>
       </div>

@@ -24,6 +24,7 @@ import {
   Download,
   X,
 } from "lucide-react";
+import AdminStorageWarning from "./AdminStorageWarning";
 
 export type OrderStatus =
   | "Menunggu Bayar"
@@ -400,12 +401,12 @@ export default function AdminOrderMasuk({
             UBAH STATUS CEPAT:
           </span>
 
-          <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
             <button
               onClick={() =>
                 handleUpdateStatus(activeDetailOrder.id, "Diproses")
               }
-              className="px-4 py-2 rounded-xl bg-blue-950/40 hover:bg-blue-900/60 border border-blue-600/60 text-blue-400 hover:text-blue-300 text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-[0_0_10px_rgba(59,130,246,0.2)]"
+              className="flex-1 sm:flex-none px-3.5 sm:px-4 py-2 rounded-xl bg-blue-950/40 hover:bg-blue-900/60 border border-blue-600/60 text-blue-400 hover:text-blue-300 text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-[0_0_10px_rgba(59,130,246,0.2)] text-center whitespace-nowrap"
             >
               Proses Pesanan
             </button>
@@ -414,7 +415,7 @@ export default function AdminOrderMasuk({
               onClick={() =>
                 handleUpdateStatus(activeDetailOrder.id, "Selesai")
               }
-              className="px-4 py-2 rounded-xl bg-emerald-950/40 hover:bg-emerald-900/60 border border-emerald-600/60 text-emerald-400 hover:text-emerald-300 text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-[0_0_10px_rgba(16,185,129,0.2)]"
+              className="flex-1 sm:flex-none px-3.5 sm:px-4 py-2 rounded-xl bg-emerald-950/40 hover:bg-emerald-900/60 border border-emerald-600/60 text-emerald-400 hover:text-emerald-300 text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-[0_0_10px_rgba(16,185,129,0.2)] text-center whitespace-nowrap"
             >
               Selesaikan Order
             </button>
@@ -423,7 +424,7 @@ export default function AdminOrderMasuk({
               onClick={() =>
                 handleUpdateStatus(activeDetailOrder.id, "Dibatalkan")
               }
-              className="px-4 py-2 rounded-xl bg-red-950/30 hover:bg-red-900/50 border border-red-800/60 text-red-400 hover:text-red-300 text-xs font-bold transition-all active:scale-95 cursor-pointer"
+              className="flex-1 sm:flex-none px-3.5 sm:px-4 py-2 rounded-xl bg-red-950/30 hover:bg-red-900/50 border border-red-800/60 text-red-400 hover:text-red-300 text-xs font-bold transition-all active:scale-95 cursor-pointer text-center whitespace-nowrap"
             >
               Batalkan
             </button>
@@ -431,7 +432,7 @@ export default function AdminOrderMasuk({
             {activeDetailOrder.status === "Selesai" && (
               <button
                 onClick={() => handleSendReviewLink(activeDetailOrder)}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-950/30 hover:bg-amber-900/50 border border-amber-500/60 text-amber-400 hover:text-amber-300 text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-[0_0_12px_rgba(245,158,11,0.2)]"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-amber-950/30 hover:bg-amber-900/50 border border-amber-500/60 text-amber-400 hover:text-amber-300 text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-[0_0_12px_rgba(245,158,11,0.2)]"
               >
                 <MessageSquare className="w-3.5 h-3.5 text-amber-400" />
                 <span>Kirim Link Review</span>
@@ -445,7 +446,7 @@ export default function AdminOrderMasuk({
               )}?text=Halo%20kak%20@${activeDetailOrder.user},%20konfirmasi%20order%20Robux%20#${activeDetailOrder.id}%20di%20ChampionStore`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/60 text-emerald-400 text-xs font-bold transition-all active:scale-95 shadow-[0_0_12px_rgba(16,185,129,0.25)]"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/60 text-emerald-400 text-xs font-bold transition-all active:scale-95 shadow-[0_0_12px_rgba(16,185,129,0.25)]"
             >
               <MessageCircle className="w-3.5 h-3.5 fill-emerald-400 text-transparent" />
               <span>Chat Pelanggan</span>
@@ -702,6 +703,9 @@ export default function AdminOrderMasuk({
   // ==========================================
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
+      {/* 90-Day Storage Retention Warning Banner */}
+      <AdminStorageWarning onToast={onToast} />
+
       {/* Title & Refresh Button Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>

@@ -21,6 +21,7 @@ import {
   ChevronRight,
   X,
 } from "lucide-react";
+import { compressToWebP } from "@/lib/compressToWebP";
 
 interface AdminPengaturanTokoProps {
   onToast: (msg: string, type?: "success" | "error" | "info") => void;
@@ -248,46 +249,85 @@ export default function AdminPengaturanToko({
     }));
   };
 
-  // Image Upload
-  const handleBannerUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Image Upload with Automatic WebP Compression
+  const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      const reader = new FileReader();
-      reader.onload = () => {
-        if (reader.result) {
-          setBannerImage(reader.result as string);
-          onToast("Banner promo berhasil diunggah!", "success");
-        }
-      };
-      reader.readAsDataURL(file);
+      const originalFile = e.target.files[0];
+      try {
+        const compressed = await compressToWebP(originalFile, 0.85, 1920);
+        const reader = new FileReader();
+        reader.onload = () => {
+          if (reader.result) {
+            setBannerImage(reader.result as string);
+            onToast("Banner promo berhasil diunggah (Terkompresi WebP)!", "success");
+          }
+        };
+        reader.readAsDataURL(compressed);
+      } catch (err) {
+        console.warn("WebP compression error:", err);
+        const reader = new FileReader();
+        reader.onload = () => {
+          if (reader.result) {
+            setBannerImage(reader.result as string);
+            onToast("Banner promo berhasil diunggah!", "success");
+          }
+        };
+        reader.readAsDataURL(originalFile);
+      }
     }
   };
 
-  const handleQrisUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleQrisUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      const reader = new FileReader();
-      reader.onload = () => {
-        if (reader.result) {
-          setQrisImage(reader.result as string);
-          onToast("Foto barcode QRIS berhasil diunggah!", "success");
-        }
-      };
-      reader.readAsDataURL(file);
+      const originalFile = e.target.files[0];
+      try {
+        const compressed = await compressToWebP(originalFile, 0.9, 1200);
+        const reader = new FileReader();
+        reader.onload = () => {
+          if (reader.result) {
+            setQrisImage(reader.result as string);
+            onToast("Foto barcode QRIS berhasil diunggah (Terkompresi WebP)!", "success");
+          }
+        };
+        reader.readAsDataURL(compressed);
+      } catch (err) {
+        console.warn("WebP compression error:", err);
+        const reader = new FileReader();
+        reader.onload = () => {
+          if (reader.result) {
+            setQrisImage(reader.result as string);
+            onToast("Foto barcode QRIS berhasil diunggah!", "success");
+          }
+        };
+        reader.readAsDataURL(originalFile);
+      }
     }
   };
 
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      const reader = new FileReader();
-      reader.onload = () => {
-        if (reader.result) {
-          setStoreLogoImage(reader.result as string);
-          onToast("Logo navbar toko berhasil diunggah!", "success");
-        }
-      };
-      reader.readAsDataURL(file);
+      const originalFile = e.target.files[0];
+      try {
+        const compressed = await compressToWebP(originalFile, 0.9, 800);
+        const reader = new FileReader();
+        reader.onload = () => {
+          if (reader.result) {
+            setStoreLogoImage(reader.result as string);
+            onToast("Logo navbar toko berhasil diunggah (Terkompresi WebP)!", "success");
+          }
+        };
+        reader.readAsDataURL(compressed);
+      } catch (err) {
+        console.warn("WebP compression error:", err);
+        const reader = new FileReader();
+        reader.onload = () => {
+          if (reader.result) {
+            setStoreLogoImage(reader.result as string);
+            onToast("Logo navbar toko berhasil diunggah!", "success");
+          }
+        };
+        reader.readAsDataURL(originalFile);
+      }
     }
   };
 

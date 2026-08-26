@@ -29,10 +29,47 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
   const [activeModal, setActiveModal] = useState<string | null>(null);
   const [selectedActivationUsername, setSelectedActivationUsername] =
     useState<string>("Champion_User");
-  const [adminNote, setAdminNote] = useState<string>(
-    "Catatan penting untuk tim operasional toko."
-  );
+  const [adminNote, setAdminNoteState] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      const cached = localStorage.getItem("champion_admin_note");
+      if (cached) return cached;
+    }
+    return "Catatan penting untuk tim operasional toko.";
+  });
   const [searchQuery, setSearchQuery] = useState<string>("");
+
+  const setAdminNote = (noteOrFn: string | ((prev: string) => string)) => {
+    setAdminNoteState((prev) => {
+      const val = typeof noteOrFn === "function" ? noteOrFn(prev) : noteOrFn;
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem("champion_admin_note", val);
+        } catch {
+          // ignore
+        }
+      }
+      return val;
+    });
+  };
+
+  // Load initial admin note from database
+  useEffect(() => {
+    async function loadInitialNote() {
+      try {
+        const res = await fetch("/api/store");
+        const json = await res.json();
+        if (json.success && json.data && json.data.adminNote) {
+          setAdminNoteState(json.data.adminNote);
+          if (typeof window !== "undefined") {
+            localStorage.setItem("champion_admin_note", json.data.adminNote);
+          }
+        }
+      } catch (err) {
+        console.warn("Failed to load initial note:", err);
+      }
+    }
+    loadInitialNote();
+  }, []);
 
   // Toast Notification state
   const [toast, setToast] = useState<{

@@ -10,6 +10,7 @@ import {
   MessageCircle,
   Loader2,
 } from "lucide-react";
+import AdminStorageWarning from "./AdminStorageWarning";
 
 export interface PaymentMutation {
   id: string;
@@ -116,7 +117,10 @@ export default function AdminRiwayatPembayaran({
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto animate-in fade-in duration-200">
-      {/* Title & Refresh Button Bar */}
+      {/* 90-Day Storage Retention Warning Banner */}
+      <AdminStorageWarning onToast={onToast} />
+
+      {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">

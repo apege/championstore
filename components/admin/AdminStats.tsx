@@ -152,7 +152,7 @@ export default function AdminStats({ onSelectCategory }: AdminStatsProps) {
           <div
             key={item.id}
             onClick={() => onSelectCategory && onSelectCategory(item.id)}
-            className="group relative rounded-2xl bg-[#090D17]/90 border border-slate-800/80 p-3 sm:p-4 transition-all duration-200 hover:border-slate-700 hover:bg-[#0B101D] hover:shadow-lg hover:shadow-red-950/10 cursor-pointer overflow-hidden flex flex-col justify-between"
+            className="group relative rounded-2xl bg-[#090D17]/90 border border-slate-800/80 p-3 sm:p-4 transition-all duration-200 hover:border-slate-700 hover:bg-[#0B101D] hover:shadow-lg hover:shadow-red-950/10 cursor-pointer overflow-hidden flex flex-col justify-between last:col-span-2 sm:last:col-span-1"
           >
             {/* Top Row: Icon & Status Badge */}
             <div className="flex items-start justify-between gap-1.5 mb-2">
