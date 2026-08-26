@@ -29,20 +29,24 @@ interface CachedHomeData {
   timestamp: number;
 }
 
-// In-Memory Fast Cache for instant responses (< 5ms)
-let memoryCache: CachedHomeData | null = null;
-let pendingFetch: Promise<CachedHomeData> | null = null;
+// Initialize with default fallback so initial render is instantaneous (0ms)
+let memoryCache: CachedHomeData = {
+  store: DEFAULT_STORE,
+  products: ROBUX_PACKAGES,
+  timestamp: 0,
+};
+let isFetching = false;
 const CACHE_TTL_MS = 60 * 1000; // 60 seconds
 
-async function fetchStoreDataFromDb(): Promise<CachedHomeData> {
-  let store = { ...DEFAULT_STORE };
-  let products: RobuxItem[] = ROBUX_PACKAGES;
+async function refreshStoreDataFromDb(): Promise<void> {
+  if (isFetching) return;
+  isFetching = true;
 
   try {
-    const fetchWithTimeout = async <T,>(fn: () => PromiseLike<T>, ms = 2000): Promise<T> => {
+    const fetchWithTimeout = async <T,>(fn: () => PromiseLike<T>, ms = 8000): Promise<T> => {
       let timer: NodeJS.Timeout;
       const timeoutPromise = new Promise<never>((_, reject) => {
-        timer = setTimeout(() => reject(new Error("Supabase query timeout")), ms);
+        timer = setTimeout(() => reject(new Error("Timeout")), ms);
       });
       try {
         return await Promise.race([Promise.resolve(fn()), timeoutPromise]);
@@ -59,17 +63,20 @@ async function fetchStoreDataFromDb(): Promise<CachedHomeData> {
           .order("id", { ascending: true })
           .limit(1)
           .maybeSingle()
-      ),
+      ).catch(() => ({ data: null })),
       fetchWithTimeout(() =>
         supabaseAdmin
           .from("products")
           .select("*")
           .eq("is_active", true)
           .order("robux", { ascending: true })
-      ),
+      ).catch(() => ({ data: null })),
     ]);
 
-    if (storeRes.data) {
+    let store = { ...DEFAULT_STORE };
+    let products: RobuxItem[] = ROBUX_PACKAGES;
+
+    if (storeRes && storeRes.data) {
       const s = storeRes.data;
       const cleanWa = (s.whatsapp_number || STORE_CONFIG.whatsappNumber).replace(
         /[^0-9]/g,
@@ -96,7 +103,7 @@ async function fetchStoreDataFromDb(): Promise<CachedHomeData> {
       };
     }
 
-    if (prodRes.data && prodRes.data.length > 0) {
+    if (prodRes && prodRes.data && prodRes.data.length > 0) {
       products = prodRes.data.map((p) => {
         const isPromo = p.robux === 2200;
         const isSultan = p.robux >= 10000;
@@ -128,61 +135,32 @@ async function fetchStoreDataFromDb(): Promise<CachedHomeData> {
         };
       });
     }
-  } catch (err) {
-    console.warn("SSR store fetch fallback:", err);
+
+    memoryCache = {
+      store,
+      products,
+      timestamp: Date.now(),
+    };
+  } catch {
+    // Graceful fallback to default in-memory data
+  } finally {
+    isFetching = false;
   }
-
-  const result: CachedHomeData = {
-    store,
-    products,
-    timestamp: Date.now(),
-  };
-
-  memoryCache = result;
-  return result;
 }
 
 export default async function Home() {
   const now = Date.now();
 
-  // 1. Fresh Cache Hit -> Instant response in ~1ms
-  if (memoryCache && now - memoryCache.timestamp < CACHE_TTL_MS) {
-    return (
-      <HomeClient
-        initialStore={memoryCache.store}
-        initialProducts={memoryCache.products}
-      />
-    );
+  // If cache is expired or first run, trigger background refresh non-blockingly
+  if (now - memoryCache.timestamp > CACHE_TTL_MS) {
+    refreshStoreDataFromDb().catch(() => {});
   }
 
-  // 2. Stale Cache Hit -> Return stale data immediately and refresh in background (Stale-While-Revalidate)
-  if (memoryCache) {
-    if (!pendingFetch) {
-      pendingFetch = fetchStoreDataFromDb().finally(() => {
-        pendingFetch = null;
-      });
-    }
-    return (
-      <HomeClient
-        initialStore={memoryCache.store}
-        initialProducts={memoryCache.products}
-      />
-    );
-  }
-
-  // 3. Cold Start -> Fetch with fast timeout or fallback
-  if (!pendingFetch) {
-    pendingFetch = fetchStoreDataFromDb().finally(() => {
-      pendingFetch = null;
-    });
-  }
-
-  const data = await pendingFetch;
-
+  // Always return cached store & products instantly (0ms latency, zero blocking)
   return (
     <HomeClient
-      initialStore={data.store}
-      initialProducts={data.products}
+      initialStore={memoryCache.store}
+      initialProducts={memoryCache.products}
     />
   );
 }
