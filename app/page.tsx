@@ -3,8 +3,7 @@ import { ROBUX_PACKAGES, STORE_CONFIG } from "@/data/pricelist";
 import HomeClient, { InitialStoreConfig } from "@/components/HomeClient";
 import { RobuxItem } from "@/types";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+export const revalidate = 60; // Incremental Static Regeneration (ISR) with Edge Caching
 
 export default async function Home() {
   // Fetch store_settings and active products directly from Supabase on the server
@@ -29,18 +28,34 @@ export default async function Home() {
   let initialProducts: RobuxItem[] = ROBUX_PACKAGES;
 
   try {
+    const fetchWithTimeout = async <T,>(fn: () => PromiseLike<T>, ms = 3000): Promise<T> => {
+      let timer: NodeJS.Timeout;
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error("Supabase query timeout")), ms);
+      });
+      try {
+        return await Promise.race([Promise.resolve(fn()), timeoutPromise]);
+      } finally {
+        clearTimeout(timer!);
+      }
+    };
+
     const [storeRes, prodRes] = await Promise.all([
-      supabaseAdmin
-        .from("store_settings")
-        .select("*")
-        .order("id", { ascending: true })
-        .limit(1)
-        .maybeSingle(),
-      supabaseAdmin
-        .from("products")
-        .select("*")
-        .eq("is_active", true)
-        .order("robux", { ascending: true }),
+      fetchWithTimeout(() =>
+        supabaseAdmin
+          .from("store_settings")
+          .select("*")
+          .order("id", { ascending: true })
+          .limit(1)
+          .maybeSingle()
+      ),
+      fetchWithTimeout(() =>
+        supabaseAdmin
+          .from("products")
+          .select("*")
+          .eq("is_active", true)
+          .order("robux", { ascending: true })
+      ),
     ]);
 
     if (storeRes.data) {
