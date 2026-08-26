@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { CartItem, PaymentMethodId } from "@/types";
 import { STORE_CONFIG } from "@/data/pricelist";
+import { compressToWebP } from "@/lib/compressToWebP";
 import {
   X,
   CheckCircle2,
@@ -98,10 +99,16 @@ export default function CheckoutModal({
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setProofFile(file);
+      const originalFile = e.target.files[0];
+      try {
+        const compressed = await compressToWebP(originalFile);
+        setProofFile(compressed);
+      } catch (err) {
+        console.warn("WebP compression failed, using original file:", err);
+        setProofFile(originalFile);
+      }
     }
   };
 

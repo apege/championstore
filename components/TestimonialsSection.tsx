@@ -20,6 +20,7 @@ import {
   Reply,
 } from "lucide-react";
 import { STORE_CONFIG } from "@/data/pricelist";
+import { compressToWebP } from "@/lib/compressToWebP";
 
 interface MemberReview {
   id: string;
@@ -221,11 +222,18 @@ export default function TestimonialsSection() {
     resolveReviewToken();
   }, []);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setProofFile(file);
-      setProofPreview(URL.createObjectURL(file));
+      const originalFile = e.target.files[0];
+      try {
+        const compressed = await compressToWebP(originalFile);
+        setProofFile(compressed);
+        setProofPreview(URL.createObjectURL(compressed));
+      } catch (err) {
+        console.warn("WebP compression failed, using original file:", err);
+        setProofFile(originalFile);
+        setProofPreview(URL.createObjectURL(originalFile));
+      }
     }
   };
 

@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { STORE_CONFIG } from "@/data/pricelist";
 import BackgroundEffects from "@/components/BackgroundEffects";
+import { compressToWebP } from "@/lib/compressToWebP";
 
 function CheckoutContent() {
   const router = useRouter();
@@ -76,11 +77,18 @@ function CheckoutContent() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setProofFile(file);
-      setProofPreview(URL.createObjectURL(file));
+      const originalFile = e.target.files[0];
+      try {
+        const compressed = await compressToWebP(originalFile);
+        setProofFile(compressed);
+        setProofPreview(URL.createObjectURL(compressed));
+      } catch (err) {
+        console.warn("WebP compression failed, using original file:", err);
+        setProofFile(originalFile);
+        setProofPreview(URL.createObjectURL(originalFile));
+      }
     }
   };
 
