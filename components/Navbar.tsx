@@ -32,7 +32,7 @@ export default function Navbar({
   const [storeInfo, setStoreInfo] = useState({
     storeName: initialStoreInfo?.storeName || STORE_CONFIG.name,
     whatsappUrl: initialStoreInfo?.whatsappUrl || STORE_CONFIG.whatsappUrl,
-    logoImageUrl: initialStoreInfo?.logoImageUrl || "/logo.png",
+    logoImageUrl: initialStoreInfo?.logoImageUrl || "/logo.webp",
   });
 
   useEffect(() => {
@@ -40,7 +40,7 @@ export default function Navbar({
       setStoreInfo({
         storeName: initialStoreInfo.storeName || STORE_CONFIG.name,
         whatsappUrl: initialStoreInfo.whatsappUrl || STORE_CONFIG.whatsappUrl,
-        logoImageUrl: initialStoreInfo.logoImageUrl || "/logo.png",
+        logoImageUrl: initialStoreInfo.logoImageUrl || "/logo.webp",
       });
     }
   }, [initialStoreInfo]);
@@ -63,13 +63,13 @@ export default function Navbar({
         >
           <div className="relative h-10 sm:h-11 w-auto shrink-0 flex items-center justify-center">
             <Image
-              src={storeInfo.logoImageUrl || "/logo.png"}
+              src={storeInfo.logoImageUrl || "/logo.webp"}
               alt={`${storeInfo.storeName} Logo`}
               width={54}
               height={40}
               className="h-10 sm:h-11 w-auto object-contain drop-shadow-[0_0_10px_rgba(37,99,235,0.4)]"
               priority
-              unoptimized
+              sizes="54px"
             />
           </div>
           <div>

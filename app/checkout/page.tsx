@@ -215,12 +215,12 @@ function CheckoutContent() {
         <div className="flex items-center gap-2">
           <div className="relative h-8 w-auto flex items-center justify-center">
             <Image
-              src="/logo.png"
+              src="/logo.webp"
               alt="ChampionStore_IDN Logo"
               width={36}
               height={28}
               className="h-8 w-auto object-contain"
-              unoptimized
+              sizes="36px"
             />
           </div>
           <span className="font-extrabold text-sm sm:text-base text-white tracking-tight">
@@ -355,7 +355,7 @@ function CheckoutContent() {
                       fill
                       priority
                       className="object-contain rounded-xl"
-                      unoptimized
+                      sizes="(max-width: 640px) 280px, 320px"
                     />
                   </div>
                 </div>

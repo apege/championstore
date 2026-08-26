@@ -422,6 +422,7 @@ export default function TestimonialsSection() {
                       <img
                         src={rev.proofImageUrl}
                         alt="Foto Bukti Pembeli"
+                        loading="lazy"
                         className="h-24 sm:h-28 w-auto max-w-[200px] object-cover rounded-xl"
                       />
                     </div>
@@ -434,11 +435,11 @@ export default function TestimonialsSection() {
                       <div className="flex items-center gap-2">
                         <div className="relative w-5 h-5 rounded-full overflow-hidden border border-red-500/40 bg-slate-900 shrink-0 shadow-[0_0_6px_rgba(255,31,61,0.4)]">
                           <Image
-                            src="/logo.png"
+                            src="/logo.webp"
                             alt="Admin Avatar"
                             fill
                             className="object-contain p-0.5"
-                            unoptimized
+                            sizes="20px"
                           />
                         </div>
                         <span className="text-xs font-extrabold text-[#FF1F3D] tracking-tight">
@@ -463,8 +464,8 @@ export default function TestimonialsSection() {
                           alt="Robux Coin"
                           width={14}
                           height={14}
-                          className="object-contain"
-                          unoptimized
+                          className="w-3.5 h-3.5 object-contain"
+                          sizes="14px"
                         />
                       </div>
                       <span>{rev.robuxAmount}</span>

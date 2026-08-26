@@ -130,7 +130,7 @@ export default function CartModal({
                         alt="Robux"
                         width={28}
                         height={28}
-                        className="w-full h-full object-contain"
+                        className="w-7 h-7 object-contain"
                       />
                     </div>
                     <div className="min-w-0">

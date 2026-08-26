@@ -36,8 +36,8 @@ export default function HeroBanner({
 }: HeroBannerProps) {
   const [promoConfig, setPromoConfig] = useState({
     storeName: initialPromoConfig?.storeName || "ChampionStore",
-    logoImageUrl: initialPromoConfig?.logoImageUrl || "/logo.png",
-    bannerImageUrl: initialPromoConfig?.bannerImageUrl || "/roblox_hero.jpg",
+    logoImageUrl: initialPromoConfig?.logoImageUrl || "/logo.webp",
+    bannerImageUrl: initialPromoConfig?.bannerImageUrl || "",
     promoActive: initialPromoConfig?.promoActive ?? false,
     promoTag: initialPromoConfig?.promoTag || "PROMO SPESIAL BULAN INI",
     promoBadge: initialPromoConfig?.promoBadge || "LIMITED STOCK",
@@ -55,8 +55,8 @@ export default function HeroBanner({
     if (initialPromoConfig) {
       setPromoConfig({
         storeName: initialPromoConfig.storeName || "ChampionStore",
-        logoImageUrl: initialPromoConfig.logoImageUrl || "/logo.png",
-        bannerImageUrl: initialPromoConfig.bannerImageUrl || "/roblox_hero.jpg",
+        logoImageUrl: initialPromoConfig.logoImageUrl || "/logo.webp",
+        bannerImageUrl: initialPromoConfig.bannerImageUrl || "",
         promoActive: initialPromoConfig.promoActive ?? false,
         promoTag: initialPromoConfig.promoTag || "PROMO SPESIAL BULAN INI",
         promoBadge: initialPromoConfig.promoBadge || "LIMITED STOCK",
@@ -121,14 +121,15 @@ export default function HeroBanner({
       {/* Banner Container with sleek dark gaming gradient, glowing edges, and watermark */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-950 via-slate-900 to-[#0c1322] border border-blue-500/30 shadow-[0_0_35px_rgba(37,99,235,0.15)] p-4 sm:p-8 md:p-10 text-white">
         {/* Banner Background Image with subtle gaming opacity */}
-        {promoConfig.bannerImageUrl && (
+        {promoConfig.bannerImageUrl && promoConfig.bannerImageUrl.trim() !== "" && (
           <div className="absolute inset-0 pointer-events-none opacity-20">
             <Image
               src={promoConfig.bannerImageUrl}
               alt="Promo Banner Background"
               fill
               className="object-cover"
-              unoptimized
+              sizes="(max-width: 1024px) 100vw, 1200px"
+              priority
             />
           </div>
         )}
@@ -293,12 +294,12 @@ export default function HeroBanner({
                 <div className="flex items-center gap-3 p-3 rounded-xl bg-blue-950/40 border border-blue-900/50">
                   <div className="h-10 w-auto max-w-[48px] shrink-0 flex items-center justify-center">
                     <Image
-                      src={promoConfig.logoImageUrl || "/logo.png"}
+                      src={promoConfig.logoImageUrl || "/logo.webp"}
                       alt="ChampionStore"
                       width={48}
                       height={36}
                       className="h-9 w-auto object-contain"
-                      unoptimized
+                      sizes="48px"
                     />
                   </div>
                   <div className="min-w-0 text-left">
@@ -319,11 +320,11 @@ export default function HeroBanner({
                 <div className="flex items-center gap-3 pb-3 border-b border-slate-800/80">
                   <div className="relative w-11 h-11 sm:w-12 sm:h-12 rounded-xl overflow-hidden border border-red-500/30 shrink-0 bg-slate-950/80 flex items-center justify-center shadow-md">
                     <Image
-                      src={promoConfig.logoImageUrl || "/logo.png"}
+                      src={promoConfig.logoImageUrl || "/logo.webp"}
                       alt={promoConfig.storeName || "Store Logo"}
                       fill
                       className="object-contain p-1"
-                      unoptimized
+                      sizes="48px"
                     />
                   </div>
                   <div className="min-w-0">

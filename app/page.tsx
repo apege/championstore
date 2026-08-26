@@ -3,32 +3,43 @@ import { ROBUX_PACKAGES, STORE_CONFIG } from "@/data/pricelist";
 import HomeClient, { InitialStoreConfig } from "@/components/HomeClient";
 import { RobuxItem } from "@/types";
 
-export const revalidate = 60; // Incremental Static Regeneration (ISR) with Edge Caching
+export const revalidate = 60; // ISR
 
-export default async function Home() {
-  // Fetch store_settings and active products directly from Supabase on the server
-  let initialStore: InitialStoreConfig = {
-    storeName: STORE_CONFIG.name,
-    whatsappNumber: STORE_CONFIG.whatsappNumber,
-    whatsappUrl: STORE_CONFIG.whatsappUrl,
-    qrisImageUrl: "/qris.webp",
-    logoImageUrl: "/logo.png",
-    bannerImageUrl: "/roblox_hero.jpg",
-    promoActive: true,
-    promoTag: "PROMO SPESIAL BULAN INI",
-    promoBadge: "LIMITED STOCK",
-    promoTitle: "ROBUX BULAN INI",
-    promoSubtitle:
-      "Top Up Robux Instant, Cepat, Legal, Aman & Bergaransi 100% Uang Kembali!",
-    promoRobuxAmount: 2200,
-    promoOriginalLabel: "2.000 Robux",
-    promoDiscountPrice: 45000,
-  };
+const DEFAULT_STORE: InitialStoreConfig = {
+  storeName: STORE_CONFIG.name,
+  whatsappNumber: STORE_CONFIG.whatsappNumber,
+  whatsappUrl: STORE_CONFIG.whatsappUrl,
+  qrisImageUrl: "/qris.webp",
+  logoImageUrl: "/logo.webp",
+  bannerImageUrl: "",
+  promoActive: true,
+  promoTag: "PROMO SPESIAL BULAN INI",
+  promoBadge: "LIMITED STOCK",
+  promoTitle: "ROBUX BULAN INI",
+  promoSubtitle:
+    "Top Up Robux Instant, Cepat, Legal, Aman & Bergaransi 100% Uang Kembali!",
+  promoRobuxAmount: 2200,
+  promoOriginalLabel: "2.000 Robux",
+  promoDiscountPrice: 45000,
+};
 
-  let initialProducts: RobuxItem[] = ROBUX_PACKAGES;
+interface CachedHomeData {
+  store: InitialStoreConfig;
+  products: RobuxItem[];
+  timestamp: number;
+}
+
+// In-Memory Fast Cache for instant responses (< 5ms)
+let memoryCache: CachedHomeData | null = null;
+let pendingFetch: Promise<CachedHomeData> | null = null;
+const CACHE_TTL_MS = 60 * 1000; // 60 seconds
+
+async function fetchStoreDataFromDb(): Promise<CachedHomeData> {
+  let store = { ...DEFAULT_STORE };
+  let products: RobuxItem[] = ROBUX_PACKAGES;
 
   try {
-    const fetchWithTimeout = async <T,>(fn: () => PromiseLike<T>, ms = 3000): Promise<T> => {
+    const fetchWithTimeout = async <T,>(fn: () => PromiseLike<T>, ms = 2000): Promise<T> => {
       let timer: NodeJS.Timeout;
       const timeoutPromise = new Promise<never>((_, reject) => {
         timer = setTimeout(() => reject(new Error("Supabase query timeout")), ms);
@@ -64,13 +75,13 @@ export default async function Home() {
         /[^0-9]/g,
         ""
       );
-      initialStore = {
+      store = {
         storeName: s.store_name || STORE_CONFIG.name,
         whatsappNumber: cleanWa,
         whatsappUrl: `https://wa.me/${cleanWa}`,
         qrisImageUrl: s.qris_image_path || "/qris.webp",
-        logoImageUrl: s.logo_image_path || "/logo.png",
-        bannerImageUrl: s.banner_image_path || "/roblox_hero.jpg",
+        logoImageUrl: s.logo_image_path || "/logo.webp",
+        bannerImageUrl: s.banner_image_path || "",
         promoActive: s.promo_active === true,
         promoTag: s.promo_tag || "PROMO SPESIAL BULAN INI",
         promoBadge: s.promo_badge || "LIMITED STOCK",
@@ -86,7 +97,7 @@ export default async function Home() {
     }
 
     if (prodRes.data && prodRes.data.length > 0) {
-      initialProducts = prodRes.data.map((p) => {
+      products = prodRes.data.map((p) => {
         const isPromo = p.robux === 2200;
         const isSultan = p.robux >= 10000;
         const isBestSeller = p.robux === 5500;
@@ -121,10 +132,57 @@ export default async function Home() {
     console.warn("SSR store fetch fallback:", err);
   }
 
+  const result: CachedHomeData = {
+    store,
+    products,
+    timestamp: Date.now(),
+  };
+
+  memoryCache = result;
+  return result;
+}
+
+export default async function Home() {
+  const now = Date.now();
+
+  // 1. Fresh Cache Hit -> Instant response in ~1ms
+  if (memoryCache && now - memoryCache.timestamp < CACHE_TTL_MS) {
+    return (
+      <HomeClient
+        initialStore={memoryCache.store}
+        initialProducts={memoryCache.products}
+      />
+    );
+  }
+
+  // 2. Stale Cache Hit -> Return stale data immediately and refresh in background (Stale-While-Revalidate)
+  if (memoryCache) {
+    if (!pendingFetch) {
+      pendingFetch = fetchStoreDataFromDb().finally(() => {
+        pendingFetch = null;
+      });
+    }
+    return (
+      <HomeClient
+        initialStore={memoryCache.store}
+        initialProducts={memoryCache.products}
+      />
+    );
+  }
+
+  // 3. Cold Start -> Fetch with fast timeout or fallback
+  if (!pendingFetch) {
+    pendingFetch = fetchStoreDataFromDb().finally(() => {
+      pendingFetch = null;
+    });
+  }
+
+  const data = await pendingFetch;
+
   return (
     <HomeClient
-      initialStore={initialStore}
-      initialProducts={initialProducts}
+      initialStore={data.store}
+      initialProducts={data.products}
     />
   );
 }

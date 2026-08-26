@@ -286,12 +286,12 @@ export default function CheckoutModal({
           <div className="flex items-center gap-2.5">
             <div className="h-8 w-auto max-w-[40px] shrink-0 flex items-center justify-center">
               <Image
-                src="/logo.png"
+                src="/logo.webp"
                 alt="Logo"
                 width={40}
                 height={32}
                 className="h-8 w-auto object-contain"
-                unoptimized
+                sizes="40px"
               />
             </div>
             <div>

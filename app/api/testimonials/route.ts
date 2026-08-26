@@ -29,7 +29,14 @@ export async function GET(req: NextRequest) {
       results = results.filter((item) => !item.admin_reply);
     }
 
-    return NextResponse.json({ success: true, data: results });
+    return NextResponse.json(
+      { success: true, data: results },
+      {
+        headers: {
+          "Cache-Control": "public, s-maxage=30, stale-while-revalidate=120",
+        },
+      }
+    );
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Internal server error";
     return NextResponse.json({ success: false, error: message }, { status: 500 });

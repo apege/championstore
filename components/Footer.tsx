@@ -15,7 +15,7 @@ interface FooterProps {
 
 export default function Footer({ initialStoreInfo }: FooterProps) {
   const storeName = initialStoreInfo?.storeName || STORE_CONFIG.name;
-  const logoImageUrl = initialStoreInfo?.logoImageUrl || "/logo.png";
+  const logoImageUrl = initialStoreInfo?.logoImageUrl || "/logo.webp";
   const whatsappUrl = initialStoreInfo?.whatsappUrl || STORE_CONFIG.whatsappUrl;
 
   return (
@@ -32,7 +32,7 @@ export default function Footer({ initialStoreInfo }: FooterProps) {
                   width={60}
                   height={44}
                   className="h-12 w-auto object-contain drop-shadow-[0_0_10px_rgba(37,99,235,0.3)]"
-                  unoptimized
+                  sizes="60px"
                 />
               </div>
               <div>

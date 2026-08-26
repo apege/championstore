@@ -173,7 +173,7 @@ export default function RobuxGridSection({
                       alt="Robux Coin"
                       width={32}
                       height={32}
-                      className="w-full h-full object-contain"
+                      className="w-8 h-8 object-contain"
                     />
                   </div>
 
