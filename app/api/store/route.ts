@@ -57,6 +57,7 @@ export async function GET() {
         promoOriginalLabel: data.promo_original_label || "2.000 Robux",
         promoDiscountPrice: Number(data.promo_discount_price) || 45000,
         promoEndDate: data.promo_end_date,
+        adminNote: data.admin_note || "Catatan penting untuk tim operasional toko.",
       },
     });
   } catch (err: unknown) {
@@ -105,6 +106,7 @@ export async function PATCH(req: NextRequest) {
     if (promoOriginalLabel !== undefined) updates.promo_original_label = promoOriginalLabel;
     if (promoDiscountPrice !== undefined) updates.promo_discount_price = Number(promoDiscountPrice);
     if (promoEndDate !== undefined) updates.promo_end_date = promoEndDate;
+    if (adminNote !== undefined) updates.admin_note = adminNote;
 
     // Check if store_settings record exists
     const { data: existing } = await supabaseAdmin
@@ -126,8 +128,10 @@ export async function PATCH(req: NextRequest) {
       result = await supabaseAdmin
         .from("store_settings")
         .insert({
+          id: "default",
           store_name: storeName || STORE_CONFIG.name,
           whatsapp_number: whatsappNumber ? whatsappNumber.replace(/[^0-9]/g, "") : STORE_CONFIG.whatsappNumber,
+          admin_note: adminNote || "Catatan penting untuk tim operasional toko.",
           ...updates,
         })
         .select()

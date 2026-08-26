@@ -112,6 +112,19 @@ export async function POST(req: NextRequest) {
       if (error) {
         return NextResponse.json({ success: false, error: error.message }, { status: 500 });
       }
+
+      try {
+        await supabaseAdmin.from("activity_logs").insert({
+          action: "Ulasan Baru Diterima",
+          details: `Ulasan ${cleanRating} Bintang dari @${cleanName}`,
+          user_target: cleanName,
+          order_id: cleanOrder !== "-" ? cleanOrder : null,
+          type: "review",
+        });
+      } catch (e) {
+        console.warn("Failed to record activity log:", e);
+      }
+
       return NextResponse.json({ success: true, data });
     }
   } catch (err: unknown) {
@@ -146,6 +159,19 @@ export async function PATCH(req: NextRequest) {
 
     if (error) {
       return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    }
+
+    if (adminReply) {
+      try {
+        await supabaseAdmin.from("activity_logs").insert({
+          action: "Balasan Ulasan Dikirim",
+          details: `Admin membalas ulasan dari @${data?.name || "Pelanggan"}`,
+          user_target: data?.name || null,
+          type: "review",
+        });
+      } catch (e) {
+        console.warn("Failed to record activity log:", e);
+      }
     }
 
     return NextResponse.json({ success: true, data });

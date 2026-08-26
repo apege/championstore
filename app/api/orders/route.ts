@@ -220,6 +220,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Log to activity_logs table for Admin realtime dashboard
+    try {
+      await supabaseAdmin.from("activity_logs").insert({
+        action: `Order Baru Masuk #${orderCode}`,
+        details: `Pesanan ${calculatedRobux.toLocaleString("id-ID")} Robux dari @${cleanUsername}`,
+        order_id: orderCode,
+        user_target: cleanUsername,
+        type: "order",
+      });
+    } catch (e) {
+      console.warn("Failed to record activity log:", e);
+    }
+
     return NextResponse.json({
       success: true,
       data: newOrder,
@@ -273,6 +286,40 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
 
+    // Log to activity_logs table
+    if (data && status !== undefined) {
+      const dbStatus = updates.order_status || status;
+      let actType = "status";
+      let actionText = `Update Status #${data.order_code || id}`;
+      let detailsText = `Status diubah menjadi "${dbStatus}"`;
+
+      if (dbStatus === "completed") {
+        actType = "success";
+        actionText = `Order Selesai #${data.order_code || id}`;
+        detailsText = `Pesanan ${Number(data.robux || 0).toLocaleString("id-ID")} Robux sukses dikirim ke @${data.roblox_username}`;
+      } else if (dbStatus === "processing") {
+        actType = "processing";
+        actionText = `Order Diproses #${data.order_code || id}`;
+        detailsText = `Pesanan @${data.roblox_username} sedang diproses admin`;
+      } else if (dbStatus === "cancelled") {
+        actType = "cancelled";
+        actionText = `Order Dibatalkan #${data.order_code || id}`;
+        detailsText = `Pesanan @${data.roblox_username} dibatalkan`;
+      }
+
+      try {
+        await supabaseAdmin.from("activity_logs").insert({
+          action: actionText,
+          details: detailsText,
+          order_id: data.order_code || String(id),
+          user_target: data.roblox_username || null,
+          type: actType,
+        });
+      } catch (e) {
+        console.warn("Failed to record activity log:", e);
+      }
+    }
+
     return NextResponse.json({ success: true, data });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Internal server error";
@@ -301,6 +348,17 @@ export async function DELETE(req: NextRequest) {
 
     if (error) {
       return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    }
+
+    try {
+      await supabaseAdmin.from("activity_logs").insert({
+        action: `Order Dihapus #${id}`,
+        details: `Data order #${id} dihapus dari sistem`,
+        order_id: String(id),
+        type: "system",
+      });
+    } catch (e) {
+      console.warn("Failed to record activity log:", e);
     }
 
     return NextResponse.json({ success: true, message: "Order berhasil dihapus." });
