@@ -97,8 +97,8 @@ export async function PATCH(req: NextRequest) {
       let cleanWa = String(whatsappNumber).replace(/[^0-9]/g, "");
       if (cleanWa.startsWith("0")) cleanWa = "62" + cleanWa.slice(1);
       else if (cleanWa.startsWith("8")) cleanWa = "62" + cleanWa;
+      else if (!cleanWa.startsWith("62") && cleanWa.length > 7) cleanWa = "62" + cleanWa;
       updates.whatsapp_number = cleanWa;
-      updates.whatsapp_url = `https://wa.me/${cleanWa}`;
     }
     if (qrisImageUrl !== undefined) updates.qris_image_path = qrisImageUrl;
     if (logoImageUrl !== undefined) updates.logo_image_path = logoImageUrl;
@@ -134,6 +134,7 @@ export async function PATCH(req: NextRequest) {
       let cleanWa = whatsappNumber ? String(whatsappNumber).replace(/[^0-9]/g, "") : "6285828378025";
       if (cleanWa.startsWith("0")) cleanWa = "62" + cleanWa.slice(1);
       else if (cleanWa.startsWith("8")) cleanWa = "62" + cleanWa;
+      else if (!cleanWa.startsWith("62") && cleanWa.length > 7) cleanWa = "62" + cleanWa;
 
       result = await supabaseAdmin
         .from("store_settings")
@@ -141,7 +142,6 @@ export async function PATCH(req: NextRequest) {
           id: "default",
           store_name: storeName || STORE_CONFIG.name,
           whatsapp_number: cleanWa,
-          whatsapp_url: `https://wa.me/${cleanWa}`,
           admin_note: adminNote || "Catatan penting untuk tim operasional toko.",
           ...updates,
         })

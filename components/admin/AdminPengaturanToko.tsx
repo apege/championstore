@@ -350,7 +350,6 @@ export default function AdminPengaturanToko({
         body: JSON.stringify({
           storeName,
           whatsappNumber: cleanWa,
-          whatsappUrl: formatWhatsAppUrl(cleanWa),
           qrisImageUrl: qrisImage,
           logoImageUrl: storeLogoImage,
           bannerImageUrl: bannerImage,

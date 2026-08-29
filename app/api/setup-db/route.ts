@@ -13,7 +13,6 @@ export async function GET() {
         id: "default",
         store_name: STORE_CONFIG.name,
         whatsapp_number: STORE_CONFIG.whatsappNumber,
-        whatsapp_url: STORE_CONFIG.whatsappUrl,
         is_store_open: true,
         announcement_banner:
           "⚡ PROMO RAMADHAN & WEEKEND: BONUS HINGGA 200 ROBUX SETIAP PEMBELIAN PAKET SULTAN! PROSES OTOMATIS 1-5 MENIT.",
