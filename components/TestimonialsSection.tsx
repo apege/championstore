@@ -99,7 +99,13 @@ const DEFAULT_REVIEWS: MemberReview[] = [
   },
 ];
 
-export default function TestimonialsSection() {
+interface TestimonialsSectionProps {
+  whatsappUrl?: string;
+}
+
+export default function TestimonialsSection({
+  whatsappUrl: propWaUrl,
+}: TestimonialsSectionProps = {}) {
   const [reviews, setReviews] = useState<MemberReview[]>(DEFAULT_REVIEWS);
 
   // Review token verified state - LOCKED by default until token link is provided by Admin!
@@ -135,11 +141,19 @@ export default function TestimonialsSection() {
     return "2.200 Robux";
   };
 
-  const [whatsappUrl, setWhatsappUrl] = useState(STORE_CONFIG.whatsappUrl);
+  const [whatsappUrl, setWhatsappUrl] = useState(
+    propWaUrl || STORE_CONFIG.whatsappUrl
+  );
+
+  useEffect(() => {
+    if (propWaUrl) {
+      setWhatsappUrl(propWaUrl);
+    }
+  }, [propWaUrl]);
 
   // Load store settings and reviews from API
   useEffect(() => {
-    fetch("/api/store")
+    fetch("/api/store", { cache: "no-store" })
       .then((r) => r.json())
       .then((j) => {
         if (j.success && j.data?.whatsappUrl) {

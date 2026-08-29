@@ -3,7 +3,9 @@ import { ROBUX_PACKAGES, STORE_CONFIG, formatWhatsAppUrl, formatWhatsAppNumber }
 import HomeClient, { InitialStoreConfig } from "@/components/HomeClient";
 import { RobuxItem } from "@/types";
 
-export const revalidate = 60; // ISR
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = "force-no-store";
 
 const DEFAULT_STORE: InitialStoreConfig = {
   storeName: STORE_CONFIG.name,
@@ -23,27 +25,15 @@ const DEFAULT_STORE: InitialStoreConfig = {
   promoDiscountPrice: 45000,
 };
 
-interface CachedHomeData {
+async function getLatestStoreData(): Promise<{
   store: InitialStoreConfig;
   products: RobuxItem[];
-  timestamp: number;
-}
-
-// Initialize with default fallback so initial render is instantaneous (0ms)
-let memoryCache: CachedHomeData = {
-  store: DEFAULT_STORE,
-  products: ROBUX_PACKAGES,
-  timestamp: 0,
-};
-let isFetching = false;
-const CACHE_TTL_MS = 60 * 1000; // 60 seconds
-
-async function refreshStoreDataFromDb(): Promise<void> {
-  if (isFetching) return;
-  isFetching = true;
+}> {
+  let store: InitialStoreConfig = { ...DEFAULT_STORE };
+  let products: RobuxItem[] = ROBUX_PACKAGES;
 
   try {
-    const fetchWithTimeout = async <T,>(fn: () => PromiseLike<T>, ms = 8000): Promise<T> => {
+    const fetchWithTimeout = async <T,>(fn: () => PromiseLike<T>, ms = 4000): Promise<T> => {
       let timer: NodeJS.Timeout;
       const timeoutPromise = new Promise<never>((_, reject) => {
         timer = setTimeout(() => reject(new Error("Timeout")), ms);
@@ -72,9 +62,6 @@ async function refreshStoreDataFromDb(): Promise<void> {
           .order("robux", { ascending: true })
       ).catch(() => ({ data: null })),
     ]);
-
-    let store = { ...DEFAULT_STORE };
-    let products: RobuxItem[] = ROBUX_PACKAGES;
 
     if (storeRes && storeRes.data) {
       const s = storeRes.data;
@@ -132,35 +119,20 @@ async function refreshStoreDataFromDb(): Promise<void> {
         };
       });
     }
-
-    memoryCache = {
-      store,
-      products,
-      timestamp: Date.now(),
-    };
-  } catch {
-    // Graceful fallback to default in-memory data
-  } finally {
-    isFetching = false;
+  } catch (err) {
+    console.warn("SSR store data fetch fallback:", err);
   }
+
+  return { store, products };
 }
 
 export default async function Home() {
-  const now = Date.now();
-
-  // If cache is expired or first run, fetch fresh store & product data from Supabase
-  if (now - memoryCache.timestamp > CACHE_TTL_MS || memoryCache.timestamp === 0) {
-    try {
-      await refreshStoreDataFromDb();
-    } catch {
-      // fallback to cached/default if database query fails
-    }
-  }
+  const { store, products } = await getLatestStoreData();
 
   return (
     <HomeClient
-      initialStore={memoryCache.store}
-      initialProducts={memoryCache.products}
+      initialStore={store}
+      initialProducts={products}
     />
   );
 }

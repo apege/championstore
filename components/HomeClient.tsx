@@ -317,7 +317,7 @@ export default function HomeClient({
         <WorkflowSection />
 
         {/* Section 5: Testimoni Pelanggan */}
-        <TestimonialsSection />
+        <TestimonialsSection whatsappUrl={storeInfo.whatsappUrl} />
       </main>
 
       {/* Sticky Bottom Bar */}

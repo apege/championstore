@@ -55,7 +55,7 @@ function CheckoutContent() {
   useEffect(() => {
     async function loadSettings() {
       try {
-        const res = await fetch("/api/store");
+        const res = await fetch("/api/store", { cache: "no-store" });
         const json = await res.json();
         if (json.success && json.data) {
           setStoreSettings({

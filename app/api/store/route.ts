@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { STORE_CONFIG, formatWhatsAppUrl, formatWhatsAppNumber } from "@/data/pricelist";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = "force-no-store";
+
 // GET /api/store - Get store settings
 export async function GET() {
   try {
@@ -12,54 +16,71 @@ export async function GET() {
       .limit(1)
       .maybeSingle();
 
+    const noCacheHeaders = {
+      "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
+      Pragma: "no-cache",
+      Expires: "0",
+    };
+
     if (error || !data) {
-      return NextResponse.json({
-        success: true,
-        data: {
-          storeName: STORE_CONFIG.name,
-          whatsappNumber: STORE_CONFIG.whatsappNumber,
-          whatsappUrl: STORE_CONFIG.whatsappUrl,
-          isStoreOpen: true,
-          qrisImageUrl: "/qris.webp",
-          logoImageUrl: "/logo.png",
-          bannerImageUrl: "/roblox_hero.jpg",
-          promoActive: true,
-          promoTag: "PROMO SPESIAL BULAN INI",
-          promoBadge: "LIMITED STOCK",
-          promoTitle: "ROBUX BULAN INI",
-          promoSubtitle: "Top Up Robux Instant, Cepat, Legal, Aman & Bergaransi 100% Uang Kembali!",
-          promoRobuxAmount: 2200,
-          promoOriginalLabel: "2.000 Robux",
-          promoDiscountPrice: 45000,
-          adminNote: "Catatan penting untuk tim admin: Selalu cek bukti transfer dan status ID Roblox sebelum memproses pesanan.",
+      return NextResponse.json(
+        {
+          success: true,
+          data: {
+            storeName: STORE_CONFIG.name,
+            whatsappNumber: STORE_CONFIG.whatsappNumber,
+            whatsappUrl: STORE_CONFIG.whatsappUrl,
+            isStoreOpen: true,
+            qrisImageUrl: "/qris.webp",
+            logoImageUrl: "/logo.png",
+            bannerImageUrl: "/roblox_hero.jpg",
+            promoActive: true,
+            promoTag: "PROMO SPESIAL BULAN INI",
+            promoBadge: "LIMITED STOCK",
+            promoTitle: "ROBUX BULAN INI",
+            promoSubtitle:
+              "Top Up Robux Instant, Cepat, Legal, Aman & Bergaransi 100% Uang Kembali!",
+            promoRobuxAmount: 2200,
+            promoOriginalLabel: "2.000 Robux",
+            promoDiscountPrice: 45000,
+            adminNote:
+              "Catatan penting untuk tim admin: Selalu cek bukti transfer dan status ID Roblox sebelum memproses pesanan.",
+          },
+          fromFallback: true,
         },
-        fromFallback: true,
-      });
+        { headers: noCacheHeaders }
+      );
     }
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        id: data.id,
-        storeName: data.store_name,
-        whatsappNumber: formatWhatsAppNumber(data.whatsapp_number),
-        whatsappUrl: formatWhatsAppUrl(data.whatsapp_number),
-        isStoreOpen: true,
-        qrisImageUrl: data.qris_image_path || "/qris.webp",
-        logoImageUrl: data.logo_image_path || "/logo.png",
-        bannerImageUrl: data.banner_image_path || "/roblox_hero.jpg",
-        promoActive: data.promo_active !== false,
-        promoTag: data.promo_tag || "PROMO SPESIAL BULAN INI",
-        promoBadge: data.promo_badge || "LIMITED STOCK",
-        promoTitle: data.promo_title || "ROBUX BULAN INI",
-        promoSubtitle: data.promo_subtitle || "Top Up Robux Instant, Cepat, Legal, Aman & Bergaransi 100% Uang Kembali!",
-        promoRobuxAmount: Number(data.promo_robux_amount) || 2200,
-        promoOriginalLabel: data.promo_original_label || "2.000 Robux",
-        promoDiscountPrice: Number(data.promo_discount_price) || 45000,
-        promoEndDate: data.promo_end_date,
-        adminNote: data.admin_note || "Catatan penting untuk tim operasional toko.",
+    return NextResponse.json(
+      {
+        success: true,
+        data: {
+          id: data.id,
+          storeName: data.store_name,
+          whatsappNumber: formatWhatsAppNumber(data.whatsapp_number),
+          whatsappUrl: formatWhatsAppUrl(data.whatsapp_number),
+          isStoreOpen: true,
+          qrisImageUrl: data.qris_image_path || "/qris.webp",
+          logoImageUrl: data.logo_image_path || "/logo.png",
+          bannerImageUrl: data.banner_image_path || "/roblox_hero.jpg",
+          promoActive: data.promo_active !== false,
+          promoTag: data.promo_tag || "PROMO SPESIAL BULAN INI",
+          promoBadge: data.promo_badge || "LIMITED STOCK",
+          promoTitle: data.promo_title || "ROBUX BULAN INI",
+          promoSubtitle:
+            data.promo_subtitle ||
+            "Top Up Robux Instant, Cepat, Legal, Aman & Bergaransi 100% Uang Kembali!",
+          promoRobuxAmount: Number(data.promo_robux_amount) || 2200,
+          promoOriginalLabel: data.promo_original_label || "2.000 Robux",
+          promoDiscountPrice: Number(data.promo_discount_price) || 45000,
+          promoEndDate: data.promo_end_date,
+          adminNote:
+            data.admin_note || "Catatan penting untuk tim operasional toko.",
+        },
       },
-    });
+      { headers: noCacheHeaders }
+    );
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Internal server error";
     return NextResponse.json({ success: false, error: message }, { status: 500 });

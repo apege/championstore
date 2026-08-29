@@ -67,7 +67,7 @@ export default function CheckoutModal({
         whatsappUrl: initialStoreInfo.whatsappUrl || STORE_CONFIG.whatsappUrl,
       });
     } else {
-      fetch("/api/store")
+      fetch("/api/store", { cache: "no-store" })
         .then((r) => r.json())
         .then((j) => {
           if (j.success && j.data) {

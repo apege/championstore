@@ -98,7 +98,7 @@ export const CATEGORIES = [
 ];
 
 export function formatWhatsAppUrl(rawPhone?: string): string {
-  if (!rawPhone) return "https://wa.me/6285828378025";
+  if (!rawPhone) return "https://wa.me/6282344687947";
   let clean = String(rawPhone).replace(/[^0-9]/g, "");
   if (clean.startsWith("0")) {
     clean = "62" + clean.slice(1);
@@ -111,7 +111,7 @@ export function formatWhatsAppUrl(rawPhone?: string): string {
 }
 
 export function formatWhatsAppNumber(rawPhone?: string): string {
-  if (!rawPhone) return "+62 858-2837-8025";
+  if (!rawPhone) return "+62 823-4468-7947";
   let clean = String(rawPhone).replace(/[^0-9]/g, "");
   if (clean.startsWith("0")) {
     clean = "62" + clean.slice(1);
@@ -127,6 +127,6 @@ export const STORE_CONFIG = {
   name: "ChampionStore_IDN",
   tagline: "Top Up Robux Resmi & Legal",
   instagram: "@CHAMPIONSTORE_IDN",
-  whatsappUrl: "https://wa.me/6285828378025",
-  whatsappNumber: "+62 858-2837-8025",
+  whatsappUrl: "https://wa.me/6282344687947",
+  whatsappNumber: "+62 823-4468-7947",
 };
