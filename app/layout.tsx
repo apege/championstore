@@ -11,11 +11,51 @@ const jakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://championstore.my.id"),
   title: "ChampionStore_IDN | Top Up Robux Resmi, Murah & Legal",
   description:
-    "Pusat top up Robux resmi terpercaya di Indonesia. Proses instan 5-10 menit hanya butuh username, garansi 100% aman.",
+    "Pusat top up Robux resmi terpercaya di Indonesia. Proses kilat 1-5 menit hanya butuh username, legal 100% dan bergaransi uang kembali.",
+  applicationName: "ChampionStore_IDN",
+  authors: [{ name: "ChampionStore_IDN" }],
+  keywords: [
+    "Top Up Robux",
+    "Robux Murah",
+    "Beli Robux Legal",
+    "ChampionStore",
+    "Top Up Roblox Indonesia",
+  ],
   icons: {
     icon: "/logo.png",
+    shortcut: "/logo.png",
+    apple: "/logo.png",
+  },
+  openGraph: {
+    title: "ChampionStore_IDN | Top Up Robux Resmi, Murah & Legal",
+    description:
+      "Pusat top up Robux resmi terpercaya di Indonesia. Proses kilat 1-5 menit, 100% Robux Legal & Bergaransi.",
+    url: "https://championstore.my.id",
+    siteName: "ChampionStore_IDN",
+    images: [
+      {
+        url: "/logo.png",
+        width: 512,
+        height: 512,
+        alt: "ChampionStore_IDN Logo",
+      },
+    ],
+    locale: "id_ID",
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "ChampionStore_IDN | Top Up Robux Resmi, Murah & Legal",
+    description:
+      "Pusat top up Robux resmi terpercaya di Indonesia. Proses kilat 1-5 menit, legal & aman.",
+    images: ["/logo.png"],
+  },
+  robots: {
+    index: true,
+    follow: true,
   },
 };
 
