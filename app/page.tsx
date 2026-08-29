@@ -148,12 +148,15 @@ async function refreshStoreDataFromDb(): Promise<void> {
 export default async function Home() {
   const now = Date.now();
 
-  // If cache is expired or first run, trigger background refresh non-blockingly
-  if (now - memoryCache.timestamp > CACHE_TTL_MS) {
-    refreshStoreDataFromDb().catch(() => {});
+  // If cache is expired or first run, fetch fresh store & product data from Supabase
+  if (now - memoryCache.timestamp > CACHE_TTL_MS || memoryCache.timestamp === 0) {
+    try {
+      await refreshStoreDataFromDb();
+    } catch {
+      // fallback to cached/default if database query fails
+    }
   }
 
-  // Always return cached store & products instantly (0ms latency, zero blocking)
   return (
     <HomeClient
       initialStore={memoryCache.store}

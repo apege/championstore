@@ -46,7 +46,41 @@ export default function HomeClient({
   initialProducts,
 }: HomeClientProps) {
   const router = useRouter();
+  const [storeInfo, setStoreInfo] = useState<InitialStoreConfig>(initialStore);
   const [packages, setPackages] = useState<RobuxItem[]>(initialProducts);
+
+  // Client-side real-time sync with latest store settings
+  React.useEffect(() => {
+    async function syncStoreSettings() {
+      try {
+        const res = await fetch("/api/store", { cache: "no-store" });
+        const json = await res.json();
+        if (json.success && json.data) {
+          setStoreInfo((prev) => ({
+            ...prev,
+            storeName: json.data.storeName || prev.storeName,
+            whatsappNumber: json.data.whatsappNumber || prev.whatsappNumber,
+            whatsappUrl: json.data.whatsappUrl || prev.whatsappUrl,
+            qrisImageUrl: json.data.qrisImageUrl || prev.qrisImageUrl,
+            logoImageUrl: json.data.logoImageUrl || prev.logoImageUrl,
+            bannerImageUrl: json.data.bannerImageUrl || prev.bannerImageUrl,
+            promoActive: json.data.promoActive !== undefined ? json.data.promoActive : prev.promoActive,
+            promoTag: json.data.promoTag || prev.promoTag,
+            promoBadge: json.data.promoBadge || prev.promoBadge,
+            promoTitle: json.data.promoTitle || prev.promoTitle,
+            promoSubtitle: json.data.promoSubtitle || prev.promoSubtitle,
+            promoRobuxAmount: json.data.promoRobuxAmount || prev.promoRobuxAmount,
+            promoOriginalLabel: json.data.promoOriginalLabel || prev.promoOriginalLabel,
+            promoDiscountPrice: json.data.promoDiscountPrice || prev.promoDiscountPrice,
+            promoEndDate: json.data.promoEndDate || prev.promoEndDate,
+          }));
+        }
+      } catch (err) {
+        console.warn("Failed to sync client store settings:", err);
+      }
+    }
+    syncStoreSettings();
+  }, []);
 
   // Default selected package
   const defaultPackage =
@@ -201,8 +235,11 @@ export default function HomeClient({
         console.warn("Failed to create WhatsApp order in Supabase:", err);
       }
 
+      const targetStoreName = storeInfo.storeName || initialStore.storeName;
+      const targetWaUrl = storeInfo.whatsappUrl || initialStore.whatsappUrl;
+
       const text = encodeURIComponent(
-        `*Halo Admin ${initialStore.storeName}, saya ingin konfirmasi order Robux!*\n\n` +
+        `*Halo Admin ${targetStoreName}, saya ingin konfirmasi order Robux!*\n\n` +
           `• *No. Invoice:* ${inv}\n` +
           `• *Username Roblox:* ${username}\n` +
           (userId ? `• *Roblox ID:* ${userId}\n` : "") +
@@ -214,7 +251,7 @@ export default function HomeClient({
       );
 
       // 2. Direct redirect to WhatsApp Admin in new tab/window
-      window.open(`${initialStore.whatsappUrl}?text=${text}`, "_blank");
+      window.open(`${targetWaUrl}?text=${text}`, "_blank");
 
       // 3. Open modal in success mode on the web
       setIsCheckoutOpen(true);
@@ -241,7 +278,7 @@ export default function HomeClient({
       <Navbar
         selectedCount={totalCartCount}
         onOpenCart={handleOpenCart}
-        initialStoreInfo={initialStore}
+        initialStoreInfo={storeInfo}
       />
 
       {/* Main Dashboard Container */}
@@ -249,7 +286,7 @@ export default function HomeClient({
         {/* Section 0: Hero Promo Banner with Realtime SSR Data */}
         <HeroBanner
           onSelectPromo={handleSelectPromo}
-          initialPromoConfig={initialStore}
+          initialPromoConfig={storeInfo}
         />
 
         {/* Features & Trust Guarantees Auto-scrolling Bar */}
@@ -308,11 +345,11 @@ export default function HomeClient({
         cartItems={checkoutItems}
         username={username}
         paymentMethod={paymentMethod}
-        initialStoreInfo={initialStore}
+        initialStoreInfo={storeInfo}
       />
 
       {/* Brand Footer with SSR Store Info */}
-      <Footer initialStoreInfo={initialStore} />
+      <Footer initialStoreInfo={storeInfo} />
     </div>
   );
 }
