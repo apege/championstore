@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { STORE_CONFIG } from "@/data/pricelist";
+import { STORE_CONFIG, formatWhatsAppUrl, formatWhatsAppNumber } from "@/data/pricelist";
 
 // GET /api/store - Get store settings
 export async function GET() {
@@ -42,8 +42,8 @@ export async function GET() {
       data: {
         id: data.id,
         storeName: data.store_name,
-        whatsappNumber: data.whatsapp_number,
-        whatsappUrl: `https://wa.me/${data.whatsapp_number.replace(/[^0-9]/g, "")}`,
+        whatsappNumber: formatWhatsAppNumber(data.whatsapp_number),
+        whatsappUrl: formatWhatsAppUrl(data.whatsapp_number),
         isStoreOpen: true,
         qrisImageUrl: data.qris_image_path || "/qris.webp",
         logoImageUrl: data.logo_image_path || "/logo.png",
@@ -93,7 +93,13 @@ export async function PATCH(req: NextRequest) {
     };
 
     if (storeName !== undefined) updates.store_name = storeName;
-    if (whatsappNumber !== undefined) updates.whatsapp_number = whatsappNumber.replace(/[^0-9]/g, "");
+    if (whatsappNumber !== undefined) {
+      let cleanWa = String(whatsappNumber).replace(/[^0-9]/g, "");
+      if (cleanWa.startsWith("0")) cleanWa = "62" + cleanWa.slice(1);
+      else if (cleanWa.startsWith("8")) cleanWa = "62" + cleanWa;
+      updates.whatsapp_number = cleanWa;
+      updates.whatsapp_url = `https://wa.me/${cleanWa}`;
+    }
     if (qrisImageUrl !== undefined) updates.qris_image_path = qrisImageUrl;
     if (logoImageUrl !== undefined) updates.logo_image_path = logoImageUrl;
     if (bannerImageUrl !== undefined) updates.banner_image_path = bannerImageUrl;
@@ -125,12 +131,17 @@ export async function PATCH(req: NextRequest) {
         .select()
         .single();
     } else {
+      let cleanWa = whatsappNumber ? String(whatsappNumber).replace(/[^0-9]/g, "") : "6285828378025";
+      if (cleanWa.startsWith("0")) cleanWa = "62" + cleanWa.slice(1);
+      else if (cleanWa.startsWith("8")) cleanWa = "62" + cleanWa;
+
       result = await supabaseAdmin
         .from("store_settings")
         .insert({
           id: "default",
           store_name: storeName || STORE_CONFIG.name,
-          whatsapp_number: whatsappNumber ? whatsappNumber.replace(/[^0-9]/g, "") : STORE_CONFIG.whatsappNumber,
+          whatsapp_number: cleanWa,
+          whatsapp_url: `https://wa.me/${cleanWa}`,
           admin_note: adminNote || "Catatan penting untuk tim operasional toko.",
           ...updates,
         })

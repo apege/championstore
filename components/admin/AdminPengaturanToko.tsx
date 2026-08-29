@@ -22,6 +22,7 @@ import {
   X,
 } from "lucide-react";
 import { compressToWebP } from "@/lib/compressToWebP";
+import { formatWhatsAppUrl, formatWhatsAppNumber } from "@/data/pricelist";
 
 interface AdminPengaturanTokoProps {
   onToast: (msg: string, type?: "success" | "error" | "info") => void;
@@ -338,14 +339,18 @@ export default function AdminPengaturanToko({
     try {
       setIsSaving(true);
       setSavedSuccess(false);
-      const cleanWa = whatsappAdmin.replace(/[^0-9]/g, "");
+      let cleanWa = whatsappAdmin.replace(/[^0-9]/g, "");
+      if (cleanWa.startsWith("0")) cleanWa = "62" + cleanWa.slice(1);
+      else if (cleanWa.startsWith("8")) cleanWa = "62" + cleanWa;
+      else if (!cleanWa.startsWith("62") && cleanWa.length > 7) cleanWa = "62" + cleanWa;
+
       const res = await fetch("/api/store", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           storeName,
           whatsappNumber: cleanWa,
-          whatsappUrl: `https://wa.me/${cleanWa}`,
+          whatsappUrl: formatWhatsAppUrl(cleanWa),
           qrisImageUrl: qrisImage,
           logoImageUrl: storeLogoImage,
           bannerImageUrl: bannerImage,
