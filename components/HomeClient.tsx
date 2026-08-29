@@ -308,6 +308,7 @@ export default function HomeClient({
         cartItems={checkoutItems}
         username={username}
         paymentMethod={paymentMethod}
+        initialStoreInfo={initialStore}
       />
 
       {/* Brand Footer with SSR Store Info */}

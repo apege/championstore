@@ -1,5 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { ROBUX_PACKAGES, STORE_CONFIG } from "@/data/pricelist";
+import { ROBUX_PACKAGES, STORE_CONFIG, formatWhatsAppUrl, formatWhatsAppNumber } from "@/data/pricelist";
 import HomeClient, { InitialStoreConfig } from "@/components/HomeClient";
 import { RobuxItem } from "@/types";
 
@@ -78,14 +78,11 @@ async function refreshStoreDataFromDb(): Promise<void> {
 
     if (storeRes && storeRes.data) {
       const s = storeRes.data;
-      const cleanWa = (s.whatsapp_number || STORE_CONFIG.whatsappNumber).replace(
-        /[^0-9]/g,
-        ""
-      );
+      const rawWa = s.whatsapp_number || STORE_CONFIG.whatsappNumber;
       store = {
         storeName: s.store_name || STORE_CONFIG.name,
-        whatsappNumber: cleanWa,
-        whatsappUrl: `https://wa.me/${cleanWa}`,
+        whatsappNumber: formatWhatsAppNumber(rawWa),
+        whatsappUrl: formatWhatsAppUrl(rawWa),
         qrisImageUrl: s.qris_image_path || "/qris.webp",
         logoImageUrl: s.logo_image_path || "/logo.webp",
         bannerImageUrl: s.banner_image_path || "",

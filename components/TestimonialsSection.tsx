@@ -135,8 +135,19 @@ export default function TestimonialsSection() {
     return "2.200 Robux";
   };
 
-  // Load reviews from API
+  const [whatsappUrl, setWhatsappUrl] = useState(STORE_CONFIG.whatsappUrl);
+
+  // Load store settings and reviews from API
   useEffect(() => {
+    fetch("/api/store")
+      .then((r) => r.json())
+      .then((j) => {
+        if (j.success && j.data?.whatsappUrl) {
+          setWhatsappUrl(j.data.whatsappUrl);
+        }
+      })
+      .catch(() => {});
+
     async function loadReviews() {
       try {
         const res = await fetch("/api/testimonials?filter=active");
@@ -735,7 +746,7 @@ export default function TestimonialsSection() {
 
                 <div className="pt-2">
                   <a
-                    href={STORE_CONFIG.whatsappUrl}
+                    href={whatsappUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="cursor-pointer inline-flex items-center justify-center gap-2 w-full py-3.5 px-4 rounded-2xl border border-red-500/40 bg-red-950/20 hover:bg-red-900/40 hover:border-red-500 text-red-400 hover:text-white font-bold text-xs sm:text-sm transition-all shadow-md"

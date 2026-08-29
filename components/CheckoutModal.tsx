@@ -28,6 +28,11 @@ interface CheckoutModalProps {
   cartItems: CartItem[];
   username: string;
   paymentMethod: PaymentMethodId;
+  initialStoreInfo?: {
+    storeName?: string;
+    whatsappUrl?: string;
+    whatsappNumber?: string;
+  };
 }
 
 export default function CheckoutModal({
@@ -36,6 +41,7 @@ export default function CheckoutModal({
   cartItems,
   username,
   paymentMethod,
+  initialStoreInfo,
 }: CheckoutModalProps) {
   const [mounted, setMounted] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -48,6 +54,32 @@ export default function CheckoutModal({
     `CS-${Date.now().toString().slice(-8)}`
   );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const [storeInfo, setStoreInfo] = useState({
+    storeName: initialStoreInfo?.storeName || STORE_CONFIG.name,
+    whatsappUrl: initialStoreInfo?.whatsappUrl || STORE_CONFIG.whatsappUrl,
+  });
+
+  useEffect(() => {
+    if (initialStoreInfo?.whatsappUrl) {
+      setStoreInfo({
+        storeName: initialStoreInfo.storeName || STORE_CONFIG.name,
+        whatsappUrl: initialStoreInfo.whatsappUrl || STORE_CONFIG.whatsappUrl,
+      });
+    } else {
+      fetch("/api/store")
+        .then((r) => r.json())
+        .then((j) => {
+          if (j.success && j.data) {
+            setStoreInfo({
+              storeName: j.data.storeName || STORE_CONFIG.name,
+              whatsappUrl: j.data.whatsappUrl || STORE_CONFIG.whatsappUrl,
+            });
+          }
+        })
+        .catch(() => {});
+    }
+  }, [initialStoreInfo]);
 
   useEffect(() => {
     if (isOpen) {
@@ -194,8 +226,10 @@ export default function CheckoutModal({
   };
 
   const generateWhatsAppUrl = (inv: string = invoiceNumber) => {
+    const targetStoreName = storeInfo.storeName || STORE_CONFIG.name;
+    const targetWaUrl = storeInfo.whatsappUrl || STORE_CONFIG.whatsappUrl;
     const text = encodeURIComponent(
-      `*Halo Admin ChampionStore_IDN, saya ingin konfirmasi order Robux!*\n\n` +
+      `*Halo Admin ${targetStoreName}, saya ingin konfirmasi order Robux!*\n\n` +
         `• *No. Invoice:* ${inv}\n` +
         `• *Username Roblox:* ${username || "-"}\n` +
         `• *Paket Robux:* ${packagesSummary}\n` +
@@ -206,7 +240,7 @@ export default function CheckoutModal({
         `• *Metode:* Pembayaran via WhatsApp\n\n` +
         `Mohon segera diproses ya min. Terima kasih!`
     );
-    return `${STORE_CONFIG.whatsappUrl}?text=${text}`;
+    return `${targetWaUrl}?text=${text}`;
   };
 
   const handleWhatsAppCheckout = async () => {
