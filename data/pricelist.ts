@@ -97,10 +97,36 @@ export const CATEGORIES = [
   { id: "sultan", label: "Paket Sultan", count: ROBUX_PACKAGES.filter(p => p.isSultan).length },
 ];
 
+export function formatWhatsAppUrl(rawPhone?: string): string {
+  if (!rawPhone) return "https://wa.me/6285828378025";
+  let clean = String(rawPhone).replace(/[^0-9]/g, "");
+  if (clean.startsWith("0")) {
+    clean = "62" + clean.slice(1);
+  } else if (clean.startsWith("8")) {
+    clean = "62" + clean;
+  } else if (!clean.startsWith("62") && clean.length > 7) {
+    clean = "62" + clean;
+  }
+  return `https://wa.me/${clean}`;
+}
+
+export function formatWhatsAppNumber(rawPhone?: string): string {
+  if (!rawPhone) return "+62 858-2837-8025";
+  let clean = String(rawPhone).replace(/[^0-9]/g, "");
+  if (clean.startsWith("0")) {
+    clean = "62" + clean.slice(1);
+  } else if (clean.startsWith("8")) {
+    clean = "62" + clean;
+  } else if (!clean.startsWith("62") && clean.length > 7) {
+    clean = "62" + clean;
+  }
+  return `+${clean}`;
+}
+
 export const STORE_CONFIG = {
   name: "ChampionStore_IDN",
   tagline: "Top Up Robux Resmi & Legal",
   instagram: "@CHAMPIONSTORE_IDN",
-  whatsappUrl: "https://wa.me/6281234567890",
-  whatsappNumber: "+62 812-3456-7890",
+  whatsappUrl: "https://wa.me/6285828378025",
+  whatsappNumber: "+62 858-2837-8025",
 };
