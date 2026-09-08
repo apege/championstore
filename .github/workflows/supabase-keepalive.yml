@@ -1,0 +1,37 @@
+name: Supabase Keep-Alive Ping
+
+on:
+  schedule:
+    # Run every 3 days at 00:00 UTC
+    - cron: '0 0 */3 * *'
+  workflow_dispatch: # Allow manual trigger from GitHub Actions tab
+
+jobs:
+  ping:
+    name: Ping Supabase & Web API
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase REST Endpoint
+        env:
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          SITE_URL: ${{ secrets.SITE_URL }}
+        run: |
+          echo "Starting Keep-Alive ping to prevent Supabase 7-day auto-pause..."
+          
+          # 1. Ping Website API if SITE_URL is provided
+          if [ -n "$SITE_URL" ]; then
+            echo "Pinging Website API: $SITE_URL/api/products"
+            curl -s -f -m 15 "$SITE_URL/api/products" > /dev/null || echo "Website ping completed with status $?"
+          fi
+
+          # 2. Ping Supabase REST endpoint directly if credentials exist
+          if [ -n "$SUPABASE_URL" ] && [ -n "$SUPABASE_ANON_KEY" ]; then
+            echo "Pinging Supabase REST API directly..."
+            curl -s -f -m 15 \
+              -H "apikey: $SUPABASE_ANON_KEY" \
+              -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+              "$SUPABASE_URL/rest/v1/products?select=id&limit=1" > /dev/null || echo "Supabase direct ping completed with status $?"
+          fi
+          
+          echo "Keep-Alive ping finished successfully!"
