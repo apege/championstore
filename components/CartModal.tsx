@@ -118,9 +118,9 @@ export default function CartModal({
           {/* Cart Items Loop */}
           {cartItems.length > 0 ? (
             <div className="space-y-2.5">
-              {cartItems.map(({ item, quantity }) => (
+              {cartItems.map(({ item, quantity }, idx) => (
                 <div
-                  key={item.id}
+                  key={`${item.id}-${idx}`}
                   className="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800/90 flex items-center justify-between gap-3 shadow-inner hover:border-slate-700 transition-all hover:translate-y-[-1px]"
                 >
                   <div className="flex items-center gap-3 min-w-0">

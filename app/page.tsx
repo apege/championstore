@@ -3,9 +3,7 @@ import { ROBUX_PACKAGES, STORE_CONFIG, formatWhatsAppUrl, formatWhatsAppNumber }
 import HomeClient, { InitialStoreConfig } from "@/components/HomeClient";
 import { RobuxItem } from "@/types";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
-export const fetchCache = "force-no-store";
+export const revalidate = 60; // ISR: Cache on Cloudflare Edge for 60 seconds
 
 const DEFAULT_STORE: InitialStoreConfig = {
   storeName: STORE_CONFIG.name,
@@ -49,7 +47,9 @@ async function getLatestStoreData(): Promise<{
       fetchWithTimeout(() =>
         supabaseAdmin
           .from("store_settings")
-          .select("*")
+          .select(
+            "store_name, whatsapp_number, qris_image_path, logo_image_path, banner_image_path, promo_active, promo_tag, promo_badge, promo_title, promo_subtitle, promo_robux_amount, promo_original_label, promo_discount_price, promo_end_date"
+          )
           .order("id", { ascending: true })
           .limit(1)
           .maybeSingle()
@@ -57,7 +57,7 @@ async function getLatestStoreData(): Promise<{
       fetchWithTimeout(() =>
         supabaseAdmin
           .from("products")
-          .select("*")
+          .select("id, robux, price, is_active")
           .eq("is_active", true)
           .order("robux", { ascending: true })
       ).catch(() => ({ data: null })),
@@ -88,7 +88,7 @@ async function getLatestStoreData(): Promise<{
     }
 
     if (prodRes && prodRes.data && prodRes.data.length > 0) {
-      products = prodRes.data.map((p) => {
+      products = prodRes.data.map((p, idx) => {
         const isPromo = p.robux === 2200;
         const isSultan = p.robux >= 10000;
         const isBestSeller = p.robux === 5500;
@@ -103,8 +103,10 @@ async function getLatestStoreData(): Promise<{
         else if ([2700, 3200, 4200, 5500].includes(p.robux))
           category = "popular";
 
+        const uniqueId = p.id ? `rbx-${p.id}` : `rbx-${p.robux}-${idx}`;
+
         return {
-          id: `rbx-${p.robux}`,
+          id: uniqueId,
           dbId: p.id,
           amount: p.robux,
           price: Number(p.price),

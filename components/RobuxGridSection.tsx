@@ -113,12 +113,13 @@ export default function RobuxGridSection({
 
         {/* Grid of Robux Items (2 Columns Mobile, 2 Columns Tablet, 4 Columns Desktop) */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          {filteredPackages.map((item) => {
+          {filteredPackages.map((item, idx) => {
             const isSelected = selectedItem?.id === item.id;
+            const uniqueKey = item.id ? `${item.id}-${idx}` : `item-${idx}`;
 
             return (
               <div
-                key={item.id}
+                key={uniqueKey}
                 onClick={() => onSelectItem(item)}
                 className={`relative cursor-pointer rounded-2xl sm:rounded-3xl border-2 p-3 sm:p-4 transition-all duration-200 ease-out hover:-translate-y-1 hover:shadow-lg hover:shadow-red-950/20 active:scale-[0.98] flex flex-col justify-between select-none ${
                   isSelected
