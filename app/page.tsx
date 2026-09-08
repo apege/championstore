@@ -66,13 +66,26 @@ async function getLatestStoreData(): Promise<{
     if (storeRes && storeRes.data) {
       const s = storeRes.data;
       const rawWa = s.whatsapp_number || STORE_CONFIG.whatsappNumber;
+      const cleanLogo =
+        s.logo_image_path && !s.logo_image_path.startsWith("data:") && s.logo_image_path.length < 500
+          ? s.logo_image_path
+          : "/logo.webp";
+      const cleanQris =
+        s.qris_image_path && !s.qris_image_path.startsWith("data:") && s.qris_image_path.length < 500
+          ? s.qris_image_path
+          : "/qris.webp";
+      const cleanBanner =
+        s.banner_image_path && !s.banner_image_path.startsWith("data:") && s.banner_image_path.length < 500
+          ? s.banner_image_path
+          : "";
+
       store = {
         storeName: s.store_name || STORE_CONFIG.name,
         whatsappNumber: formatWhatsAppNumber(rawWa),
         whatsappUrl: formatWhatsAppUrl(rawWa),
-        qrisImageUrl: s.qris_image_path || "/qris.webp",
-        logoImageUrl: s.logo_image_path || "/logo.webp",
-        bannerImageUrl: s.banner_image_path || "",
+        qrisImageUrl: cleanQris,
+        logoImageUrl: cleanLogo,
+        bannerImageUrl: cleanBanner,
         promoActive: s.promo_active === true,
         promoTag: s.promo_tag || "PROMO SPESIAL BULAN INI",
         promoBadge: s.promo_badge || "LIMITED STOCK",
