@@ -68,14 +68,27 @@ export default function AdminStats({ onSelectCategory }: AdminStatsProps) {
     const handleCustomUpdate = () => {
       loadStats();
     };
+
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        loadStats();
+      }
+    };
+
     window.addEventListener("champion-orders-updated", handleCustomUpdate);
+    window.addEventListener("visibilitychange", handleVisibility);
     window.addEventListener("focus", handleCustomUpdate);
 
-    const interval = setInterval(loadStats, 3000);
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        loadStats();
+      }
+    }, 45000);
 
     return () => {
       supabase.removeChannel(channel);
       window.removeEventListener("champion-orders-updated", handleCustomUpdate);
+      window.removeEventListener("visibilitychange", handleVisibility);
       window.removeEventListener("focus", handleCustomUpdate);
       clearInterval(interval);
     };

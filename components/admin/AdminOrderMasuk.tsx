@@ -157,12 +157,25 @@ export default function AdminOrderMasuk({
       )
       .subscribe();
 
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        fetchOrders(true);
+      }
+    };
+
+    window.addEventListener("visibilitychange", handleVisibility);
+    window.addEventListener("focus", handleVisibility);
+
     const interval = setInterval(() => {
-      fetchOrders(true);
-    }, 3000);
+      if (document.visibilityState === "visible") {
+        fetchOrders(true);
+      }
+    }, 45000);
 
     return () => {
       supabase.removeChannel(channel);
+      window.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("focus", handleVisibility);
       clearInterval(interval);
     };
   }, []);

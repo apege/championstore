@@ -103,13 +103,26 @@ export default function AdminActivity({ onViewAll }: AdminActivityProps) {
       loadLogs();
     };
 
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        loadLogs();
+      }
+    };
+
     window.addEventListener("champion-orders-updated", handleCustomUpdate);
+    window.addEventListener("visibilitychange", handleVisibility);
     window.addEventListener("focus", handleCustomUpdate);
-    const interval = setInterval(loadLogs, 3500);
+    
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        loadLogs();
+      }
+    }, 45000);
 
     return () => {
       supabase.removeChannel(channel);
       window.removeEventListener("champion-orders-updated", handleCustomUpdate);
+      window.removeEventListener("visibilitychange", handleVisibility);
       window.removeEventListener("focus", handleCustomUpdate);
       clearInterval(interval);
     };

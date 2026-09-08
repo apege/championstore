@@ -89,8 +89,12 @@ export default function AdminSidebar({
     window.addEventListener("visibilitychange", handleVisibility);
     window.addEventListener("focus", handleCustomUpdate);
 
-    // 5. Fast background polling fallback (2.5s)
-    const interval = setInterval(loadBadgeStats, 2500);
+    // 5. Gentle background polling fallback (45s only if tab is visible)
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        loadBadgeStats();
+      }
+    }, 45000);
 
     return () => {
       supabase.removeChannel(channel);
