@@ -1,25 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { STORE_CONFIG, formatWhatsAppUrl, formatWhatsAppNumber } from "@/data/pricelist";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
-export const fetchCache = "force-no-store";
+export const revalidate = 60; // 60 seconds Edge CDN cache
 
 // GET /api/store - Get store settings
 export async function GET() {
   try {
     const { data, error } = await supabaseAdmin
       .from("store_settings")
-      .select("*")
+      .select(
+        "id, store_name, whatsapp_number, qris_image_path, logo_image_path, banner_image_path, promo_active, promo_tag, promo_badge, promo_title, promo_subtitle, promo_robux_amount, promo_original_label, promo_discount_price, promo_end_date, admin_note"
+      )
       .order("id", { ascending: true })
       .limit(1)
       .maybeSingle();
 
-    const noCacheHeaders = {
-      "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
-      Pragma: "no-cache",
-      Expires: "0",
+    const cacheHeaders = {
+      "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
     };
 
     if (error || !data) {
@@ -32,8 +31,8 @@ export async function GET() {
             whatsappUrl: STORE_CONFIG.whatsappUrl,
             isStoreOpen: true,
             qrisImageUrl: "/qris.webp",
-            logoImageUrl: "/logo.png",
-            bannerImageUrl: "/roblox_hero.jpg",
+            logoImageUrl: "/logo.webp",
+            bannerImageUrl: "",
             promoActive: true,
             promoTag: "PROMO SPESIAL BULAN INI",
             promoBadge: "LIMITED STOCK",
@@ -48,7 +47,7 @@ export async function GET() {
           },
           fromFallback: true,
         },
-        { headers: noCacheHeaders }
+        { headers: cacheHeaders }
       );
     }
 
@@ -79,7 +78,7 @@ export async function GET() {
             data.admin_note || "Catatan penting untuk tim operasional toko.",
         },
       },
-      { headers: noCacheHeaders }
+      { headers: cacheHeaders }
     );
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Internal server error";
@@ -172,6 +171,12 @@ export async function PATCH(req: NextRequest) {
 
     if (result.error) {
       return NextResponse.json({ success: false, error: result.error.message }, { status: 500 });
+    }
+
+    try {
+      revalidatePath("/");
+    } catch (e) {
+      console.warn("revalidatePath error:", e);
     }
 
     return NextResponse.json({ success: true, data: result.data });

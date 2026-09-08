@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { ROBUX_PACKAGES } from "@/data/pricelist";
 
@@ -10,7 +11,7 @@ export async function GET(req: NextRequest) {
 
     let query = supabaseAdmin
       .from("products")
-      .select("*")
+      .select("id, name, robux, price, is_active")
       .order("robux", { ascending: true });
 
     if (!includeInactive) {
@@ -19,16 +20,23 @@ export async function GET(req: NextRequest) {
 
     const { data, error } = await query;
 
+    const cacheHeaders = {
+      "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+    };
+
     if (error || !data || data.length === 0) {
-      return NextResponse.json({
-        success: true,
-        data: ROBUX_PACKAGES,
-        fromFallback: true,
-      });
+      return NextResponse.json(
+        {
+          success: true,
+          data: ROBUX_PACKAGES,
+          fromFallback: true,
+        },
+        { headers: cacheHeaders }
+      );
     }
 
     // Map database rows to frontend RobuxItem format
-    const formatted = data.map((p) => {
+    const formatted = data.map((p, idx) => {
       const isPromo = p.robux === 2200;
       const isSultan = p.robux >= 10000;
       const isBestSeller = p.robux === 5500;
@@ -42,8 +50,14 @@ export async function GET(req: NextRequest) {
       else if (isPromo) category = "promo";
       else if ([2700, 3200, 4200, 5500].includes(p.robux)) category = "popular";
 
+      const uniqueId = p.id
+        ? String(p.id).startsWith("rbx-")
+          ? String(p.id)
+          : `rbx-${p.id}`
+        : `rbx-${p.robux}-${idx}`;
+
       return {
-        id: `rbx-${p.robux}`,
+        id: uniqueId,
         dbId: p.id,
         amount: p.robux,
         price: Number(p.price),
@@ -58,7 +72,10 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    return NextResponse.json({ success: true, data: formatted });
+    return NextResponse.json(
+      { success: true, data: formatted },
+      { headers: cacheHeaders }
+    );
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Internal server error";
     return NextResponse.json({ success: false, error: message }, { status: 500 });
@@ -94,6 +111,12 @@ export async function POST(req: NextRequest) {
 
     if (error) {
       return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    }
+
+    try {
+      revalidatePath("/");
+    } catch (e) {
+      console.warn("revalidatePath error:", e);
     }
 
     return NextResponse.json({ success: true, data });
@@ -134,6 +157,12 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
 
+    try {
+      revalidatePath("/");
+    } catch (e) {
+      console.warn("revalidatePath error:", e);
+    }
+
     return NextResponse.json({ success: true, data });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Internal server error";
@@ -166,6 +195,12 @@ export async function DELETE(req: NextRequest) {
 
     if (error) {
       return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    }
+
+    try {
+      revalidatePath("/");
+    } catch (e) {
+      console.warn("revalidatePath error:", e);
     }
 
     return NextResponse.json({ success: true, message: "Produk berhasil dihapus." });

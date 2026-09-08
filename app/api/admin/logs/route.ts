@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
     // 1. Fetch from activity_logs
     const { data: logsData } = await supabaseAdmin
       .from("activity_logs")
-      .select("*")
+      .select("id, action, details, order_id, user_target, type, created_at")
       .order("created_at", { ascending: false })
       .limit(limit);
 
@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
       // Fetch recent orders
       const { data: ordersData } = await supabaseAdmin
         .from("orders")
-        .select("*")
+        .select("id, order_code, order_status, robux, roblox_username, created_at")
         .order("created_at", { ascending: false })
         .limit(limit);
 
@@ -65,7 +65,7 @@ export async function GET(req: NextRequest) {
       // Fetch recent testimonials
       const { data: testData } = await supabaseAdmin
         .from("testimonials")
-        .select("*")
+        .select("id, name, rating, order_code, created_at")
         .order("created_at", { ascending: false })
         .limit(10);
 
