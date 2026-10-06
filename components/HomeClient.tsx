@@ -49,38 +49,18 @@ export default function HomeClient({
   const [storeInfo, setStoreInfo] = useState<InitialStoreConfig>(initialStore);
   const [packages, setPackages] = useState<RobuxItem[]>(initialProducts);
 
-  // Client-side real-time sync with latest store settings
+  // Real-time update if initialStore prop changes
   React.useEffect(() => {
-    async function syncStoreSettings() {
-      try {
-        const res = await fetch("/api/store", { cache: "no-store" });
-        const json = await res.json();
-        if (json.success && json.data) {
-          setStoreInfo((prev) => ({
-            ...prev,
-            storeName: json.data.storeName || prev.storeName,
-            whatsappNumber: json.data.whatsappNumber || prev.whatsappNumber,
-            whatsappUrl: json.data.whatsappUrl || prev.whatsappUrl,
-            qrisImageUrl: json.data.qrisImageUrl || prev.qrisImageUrl,
-            logoImageUrl: json.data.logoImageUrl || prev.logoImageUrl,
-            bannerImageUrl: json.data.bannerImageUrl || prev.bannerImageUrl,
-            promoActive: json.data.promoActive !== undefined ? json.data.promoActive : prev.promoActive,
-            promoTag: json.data.promoTag || prev.promoTag,
-            promoBadge: json.data.promoBadge || prev.promoBadge,
-            promoTitle: json.data.promoTitle || prev.promoTitle,
-            promoSubtitle: json.data.promoSubtitle || prev.promoSubtitle,
-            promoRobuxAmount: json.data.promoRobuxAmount || prev.promoRobuxAmount,
-            promoOriginalLabel: json.data.promoOriginalLabel || prev.promoOriginalLabel,
-            promoDiscountPrice: json.data.promoDiscountPrice || prev.promoDiscountPrice,
-            promoEndDate: json.data.promoEndDate || prev.promoEndDate,
-          }));
-        }
-      } catch (err) {
-        console.warn("Failed to sync client store settings:", err);
-      }
+    if (initialStore) {
+      setStoreInfo(initialStore);
     }
-    syncStoreSettings();
-  }, []);
+  }, [initialStore]);
+
+  React.useEffect(() => {
+    if (initialProducts) {
+      setPackages(initialProducts);
+    }
+  }, [initialProducts]);
 
   // Default selected package
   const defaultPackage =

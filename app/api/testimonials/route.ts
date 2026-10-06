@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
 // GET /api/testimonials - List all testimonials
@@ -9,7 +10,7 @@ export async function GET(req: NextRequest) {
 
     let query = supabaseAdmin
       .from("testimonials")
-      .select("*")
+      .select("id, name, rating, message, image_path, order_code, status, admin_reply, created_at")
       .order("created_at", { ascending: false });
 
     if (filter === "active") {
@@ -33,7 +34,7 @@ export async function GET(req: NextRequest) {
       { success: true, data: results },
       {
         headers: {
-          "Cache-Control": "public, s-maxage=30, stale-while-revalidate=120",
+          "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
         },
       }
     );

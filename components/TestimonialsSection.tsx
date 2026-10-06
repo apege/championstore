@@ -151,17 +151,8 @@ export default function TestimonialsSection({
     }
   }, [propWaUrl]);
 
-  // Load store settings and reviews from API
+  // Load reviews from API
   useEffect(() => {
-    fetch("/api/store", { cache: "no-store" })
-      .then((r) => r.json())
-      .then((j) => {
-        if (j.success && j.data?.whatsappUrl) {
-          setWhatsappUrl(j.data.whatsappUrl);
-        }
-      })
-      .catch(() => {});
-
     async function loadReviews() {
       try {
         const res = await fetch("/api/testimonials?filter=active");
